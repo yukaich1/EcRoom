@@ -1,0 +1,61 @@
+{
+  "skill_id": "revision_studio",
+  "name": "深度改稿",
+  "description": "基于用户反馈对已有内容进行结构、风格和表达层面的改写。",
+  "workflow_hint": "先理解用户真正不满意的地方，再保留有效信息做完整新版本。",
+  "trigger": "用户贴出草稿、要求去 AI 味、变自然、改标题、改第二段或继续修改。",
+  "version": "1.0",
+  "package_kind": "revision",
+  "agent_sequence": [
+    "intent_interpreter",
+    "researcher",
+    "editor",
+    "critic_panel",
+    "memory_curator"
+  ],
+  "workflow_steps": [
+    "识别用户要求保留、删除、替换、增强的部分。",
+    "判断反馈属于本次需求、项目规则还是长期偏好候选。",
+    "删除模板句、空泛连接词和不自然表达。",
+    "输出完整改后版本，并记录可复用的改稿经验。"
+  ],
+  "tool_contract": [
+    "memory.search(feedback,style)",
+    "memory.write(candidate_preference)",
+    "critic.review"
+  ],
+  "input_contract": [
+    "原稿",
+    "用户反馈",
+    "保留项",
+    "禁用项"
+  ],
+  "output_contract": [
+    "改后完整版本",
+    "简短修改依据",
+    "候选记忆"
+  ],
+  "constraints": [
+    "不随意扩写无关内容，不把一次反馈永久固化。"
+  ],
+  "evaluation": [
+    "反馈响应度",
+    "自然度",
+    "信息保留",
+    "用户风格贴合度"
+  ],
+  "examples": [
+    "标题太像模板，第二段更自然一点，别改掉核心设定。"
+  ],
+  "failure_policy": [
+    "反馈矛盾时优先保留用户明确指定的信息。"
+  ],
+  "tags": [
+    "revision",
+    "style",
+    "feedback"
+  ],
+  "component": "skills/revision_studio",
+  "owner": "skill_orchestrator",
+  "rollback_target": "1.0"
+}

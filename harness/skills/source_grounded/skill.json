@@ -1,0 +1,64 @@
+{
+  "skill_id": "source_grounded",
+  "name": "资料驱动",
+  "description": "围绕链接、素材、平台规范或项目资料进行检索、整理和生成。",
+  "workflow_hint": "先处理来源和证据，再把可靠信息转化为创作内容。",
+  "trigger": "用户提供链接、资料、参考作品、平台规则、禁用词或需要事实依据。",
+  "version": "1.0",
+  "package_kind": "research",
+  "agent_sequence": [
+    "intent_interpreter",
+    "researcher",
+    "norm_steward",
+    "strategist",
+    "draft_writer",
+    "critic_panel"
+  ],
+  "workflow_steps": [
+    "识别链接、平台、实体名、作品名和规则线索。",
+    "导入或召回资料库、记忆库和平台规范。",
+    "区分确定事实、用户设定、参考风格和待验证信息。",
+    "生成内容时只使用已确认或明确标注为参考的信息。"
+  ],
+  "tool_contract": [
+    "url.import",
+    "memory.search(hybrid)",
+    "knowledge.search(hybrid)",
+    "norm.review"
+  ],
+  "input_contract": [
+    "链接或资料文本",
+    "要使用的部分",
+    "目标内容类型",
+    "引用边界"
+  ],
+  "output_contract": [
+    "来源摘要",
+    "可用素材",
+    "生成内容",
+    "风险或不确定项"
+  ],
+  "constraints": [
+    "不把参考作品当作可复制内容，不编造来源。"
+  ],
+  "evaluation": [
+    "素材命中率",
+    "事实谨慎度",
+    "引用边界",
+    "规范安全"
+  ],
+  "examples": [
+    "参考这篇规则和这个角色设定，帮我写一版发布文案。"
+  ],
+  "failure_policy": [
+    "资料无法访问时保留 URL 线索，并降低事实置信度。"
+  ],
+  "tags": [
+    "research",
+    "norm",
+    "source"
+  ],
+  "component": "skills/source_grounded",
+  "owner": "skill_orchestrator",
+  "rollback_target": "1.0"
+}

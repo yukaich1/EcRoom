@@ -1,0 +1,59 @@
+{
+  "skill_id": "variant_lab",
+  "name": "方案实验",
+  "description": "为同一目标生成多种可比较方向，用于标题、开头、卖点和创意路线探索。",
+  "workflow_hint": "先拆出评价维度，再生成少量差异明显的候选方案。",
+  "trigger": "用户需要多个标题、多个开头、多种风格方向或想比较不同创作路线。",
+  "version": "1.0",
+  "package_kind": "exploration",
+  "agent_sequence": [
+    "intent_interpreter",
+    "strategist",
+    "draft_writer",
+    "critic_panel"
+  ],
+  "workflow_steps": [
+    "抽取核心承诺、情绪、冲突、信息差和平台限制。",
+    "生成风格差异明显的候选，而不是同义改写。",
+    "按吸引力、准确度、风险和用户偏好筛选。",
+    "推荐可继续打磨的方向。"
+  ],
+  "tool_contract": [
+    "memory.search(preference,platform)",
+    "critic.rank"
+  ],
+  "input_contract": [
+    "核心内容",
+    "候选数量",
+    "比较维度",
+    "禁用方向"
+  ],
+  "output_contract": [
+    "候选方案",
+    "差异说明",
+    "推荐方案"
+  ],
+  "constraints": [
+    "候选必须真实区分方向，不制造标题党。"
+  ],
+  "evaluation": [
+    "方向差异",
+    "第一眼吸引力",
+    "准确度",
+    "不过度营销"
+  ],
+  "examples": [
+    "给我 8 个不同方向的标题，不要只是换词。"
+  ],
+  "failure_policy": [
+    "候选过于相似时重新按不同策略生成。"
+  ],
+  "tags": [
+    "variant",
+    "hook",
+    "exploration"
+  ],
+  "component": "skills/variant_lab",
+  "owner": "skill_orchestrator",
+  "rollback_target": "1.0"
+}

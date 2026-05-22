@@ -1,0 +1,57 @@
+{
+  "skill_id": "creative_brief",
+  "name": "创作诊断",
+  "description": "把模糊想法整理成可执行的创作 brief，再决定后续路线。",
+  "workflow_hint": "先追踪目标、受众、使用场景、限制和成功标准，再组织下一步创作。",
+  "trigger": "用户只有一个初步想法、方向很散，或希望先讨论清楚再写。",
+  "version": "1.0",
+  "package_kind": "planning",
+  "agent_sequence": [
+    "intent_interpreter",
+    "researcher",
+    "strategist",
+    "critic_panel"
+  ],
+  "workflow_steps": [
+    "拆分用户输入中的目标、受众、载体、约束、禁用项和参考材料。",
+    "判断哪些信息足够生成，哪些信息需要用假设方式处理。",
+    "形成一个可执行 brief，并给出 2-3 条创作路线。",
+    "输出前标注本次只在当前会话生效的临时偏好。"
+  ],
+  "tool_contract": [
+    "memory.search(preference,project)",
+    "knowledge.search(project,style)"
+  ],
+  "input_contract": [
+    "原始想法",
+    "可选平台或使用场景",
+    "可选参考材料",
+    "禁用或必须保留的信息"
+  ],
+  "output_contract": [
+    "创作 brief",
+    "可选方向",
+    "下一步建议"
+  ],
+  "constraints": [
+    "不把临时创作倾向固化为长期用户画像。"
+  ],
+  "evaluation": [
+    "需求清晰度",
+    "约束完整度",
+    "下一步可执行性"
+  ],
+  "examples": [
+    "我有一个游戏活动点子，但还没想清楚怎么写。"
+  ],
+  "failure_policy": [
+    "信息不足时先给假设 brief，不强迫用户填表。"
+  ],
+  "tags": [
+    "planning",
+    "brief"
+  ],
+  "component": "skills/creative_brief",
+  "owner": "skill_orchestrator",
+  "rollback_target": "1.0"
+}

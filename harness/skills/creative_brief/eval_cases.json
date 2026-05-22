@@ -1,0 +1,16 @@
+[
+  {
+    "case_id": "creative_brief_contract",
+    "input": "我有一个游戏活动点子，但还没想清楚怎么写。",
+    "must_check": [
+      "需求清晰度",
+      "约束完整度",
+      "下一步可执行性"
+    ],
+    "output_contract": [
+      "创作 brief",
+      "可选方向",
+      "下一步建议"
+    ]
+  }
+]

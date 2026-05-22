@@ -1,0 +1,63 @@
+{
+  "skill_id": "narrative_canon",
+  "name": "叙事设定",
+  "description": "处理角色、世界观、剧情、势力和 canon 一致性。",
+  "workflow_hint": "先锁定不可变设定，再生成能继续扩展的叙事文本。",
+  "trigger": "用户要求角色登场、人物小传、世界观、任务剧情、势力冲突或游戏宣发。",
+  "version": "1.0",
+  "package_kind": "domain",
+  "agent_sequence": [
+    "intent_interpreter",
+    "researcher",
+    "strategist",
+    "draft_writer",
+    "critic_panel",
+    "norm_steward"
+  ],
+  "workflow_steps": [
+    "抽取角色身份、欲望、冲突、口吻、世界观事实和不可改动设定。",
+    "区分 canon、临时设定、参考风格和可发挥空白。",
+    "生成角色/世界观正文，并保留可传播短版或剧情钩子。",
+    "检查角色动机、时间线、设定边界和平台传播语气。"
+  ],
+  "tool_contract": [
+    "memory.search(character,canon)",
+    "knowledge.search(project,canon)",
+    "consistency.check"
+  ],
+  "input_contract": [
+    "角色或世界观素材",
+    "不可改动设定",
+    "目标用途",
+    "参考风格"
+  ],
+  "output_contract": [
+    "设定内核",
+    "正文版本",
+    "可传播短版",
+    "一致性提醒"
+  ],
+  "constraints": [
+    "参考对象只能作为风格和结构参考，不能直接复刻表达。"
+  ],
+  "evaluation": [
+    "角色辨识度",
+    "设定一致性",
+    "情绪张力",
+    "可扩展性"
+  ],
+  "examples": [
+    "写一个参考伊蕾娜气质的旅行魔女，但设定必须是原创。"
+  ],
+  "failure_policy": [
+    "设定冲突时优先指出冲突，再给出保守版本。"
+  ],
+  "tags": [
+    "character",
+    "worldbuilding",
+    "canon"
+  ],
+  "component": "skills/narrative_canon",
+  "owner": "skill_orchestrator",
+  "rollback_target": "1.0"
+}

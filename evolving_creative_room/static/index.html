@@ -1,0 +1,309 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>EcRoom</title>
+    <link rel="icon" type="image/png" href="/assets/ecroom-favicon.png" />
+    <link rel="apple-touch-icon" href="/assets/ecroom-icon-256.png" />
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <svg class="icon-sprite" aria-hidden="true">
+      <symbol id="i-star" viewBox="0 0 24 24"><path d="M12 3 14.4 9.5 21 12l-6.6 2.5L12 21l-2.4-6.5L3 12l6.6-2.5L12 3Z" /></symbol>
+      <symbol id="i-pen" viewBox="0 0 24 24"><path d="m4 20 4.6-1 10-10a2.1 2.1 0 0 0-3-3l-10 10L4 20Z" /><path d="m13.5 6.5 4 4" /></symbol>
+      <symbol id="i-chat" viewBox="0 0 24 24"><path d="M5 5.5A3.5 3.5 0 0 1 8.5 2h7A3.5 3.5 0 0 1 19 5.5v6A3.5 3.5 0 0 1 15.5 15H10l-5 5v-5.5A3.5 3.5 0 0 1 5 11V5.5Z" /></symbol>
+      <symbol id="i-send" viewBox="0 0 24 24"><path d="M4 12 20 4l-5 16-3-7-8-1Z" /></symbol>
+      <symbol id="i-tool" viewBox="0 0 24 24"><path d="m14.7 6.3 3-3a4 4 0 0 1-5 5l-7.4 7.4a2.1 2.1 0 0 0 3 3l7.4-7.4a4 4 0 0 1 5-5l-3 3" /></symbol>
+      <symbol id="i-more" viewBox="0 0 24 24"><path d="M5 12h.01M12 12h.01M19 12h.01" /></symbol>
+      <symbol id="i-pin" viewBox="0 0 24 24"><path d="m14 4 6 6-4 1-4.5 4.5.5 4.5-.8.8-4-4-4-4 .8-.8 4.5.5L13 8l1-4Z" /></symbol>
+      <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 14h10l1-14M9 7V4h6v3" /></symbol>
+      <symbol id="i-user" viewBox="0 0 24 24"><path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8ZM4 21a8 8 0 0 1 16 0" /></symbol>
+      <symbol id="i-settings" viewBox="0 0 24 24"><path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z" /><path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 0 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-1.8-.3 1.6 1.6 0 0 0-1 1.5V21a2 2 0 0 1-4 0v-.2a1.6 1.6 0 0 0-1-1.5 1.6 1.6 0 0 0-1.8.3l-.1.1a2 2 0 0 1-2.8-2.8l.1-.1a1.6 1.6 0 0 0 .3-1.8 1.6 1.6 0 0 0-1.5-1H3a2 2 0 0 1 0-4h.2a1.6 1.6 0 0 0 1.5-1 1.6 1.6 0 0 0-.3-1.8l-.1-.1a2 2 0 0 1 2.8-2.8l.1.1a1.6 1.6 0 0 0 1.8.3h.1a1.6 1.6 0 0 0 1-1.5V3a2 2 0 0 1 4 0v.2a1.6 1.6 0 0 0 1 1.5h.1a1.6 1.6 0 0 0 1.8-.3l.1-.1a2 2 0 0 1 2.8 2.8l-.1.1a1.6 1.6 0 0 0-.3 1.8v.1a1.6 1.6 0 0 0 1.5 1h.2a2 2 0 0 1 0 4H21a1.6 1.6 0 0 0-1.5 1Z" /></symbol>
+      <symbol id="i-close" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18" /></symbol>
+      <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16" /></symbol>
+      <symbol id="i-folder" viewBox="0 0 24 24"><path d="M4 7.5A2.5 2.5 0 0 1 6.5 5H10l2 2h5.5A2.5 2.5 0 0 1 20 9.5v7A2.5 2.5 0 0 1 17.5 19h-11A2.5 2.5 0 0 1 4 16.5v-9Z" /></symbol>
+      <symbol id="i-heart" viewBox="0 0 24 24"><path d="M20.8 8.7c0 5.4-8.8 10.3-8.8 10.3S3.2 14.1 3.2 8.7A4.6 4.6 0 0 1 12 6.8a4.6 4.6 0 0 1 8.8 1.9Z" /></symbol>
+      <symbol id="i-share" viewBox="0 0 24 24"><path d="M4 12v7a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-7" /><path d="M12 16V4M7 9l5-5 5 5" /></symbol>
+      <symbol id="i-search" viewBox="0 0 24 24"><path d="m21 21-4.3-4.3" /><circle cx="11" cy="11" r="7" /></symbol>
+      <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4" /><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" /></symbol>
+      <symbol id="i-moon" viewBox="0 0 24 24"><path d="M20 15.5A8.5 8.5 0 0 1 8.5 4 7 7 0 1 0 20 15.5Z" /></symbol>
+    </svg>
+
+    <button class="theme-toggle global-theme-toggle" id="themeToggleBtn" type="button" aria-label="切换明暗主题">
+      <svg class="theme-icon-moon" aria-hidden="true"><use href="#i-moon"></use></svg>
+      <svg class="theme-icon-sun" aria-hidden="true"><use href="#i-sun"></use></svg>
+    </button>
+
+    <div class="app-frame" id="appFrame">
+      <aside class="icon-rail" aria-label="工具栏">
+        <button class="brand-button" id="brandHomeBtn" type="button" aria-label="回到灵感页"><img src="/assets/ecroom-icon-128.png" alt="EcRoom" /></button>
+        <nav class="rail-nav" aria-label="主入口">
+          <button class="rail-button active" id="inspirationNavBtn" type="button" data-screen="inspiration" title="灵感"><svg aria-hidden="true"><use href="#i-heart"></use></svg><span>灵感</span></button>
+          <button class="rail-button" id="generateNavBtn" type="button" data-screen="generate" title="生成"><svg aria-hidden="true"><use href="#i-star"></use></svg><span>生成</span></button>
+          <button class="rail-button" id="assetButton" type="button" title="资产"><svg aria-hidden="true"><use href="#i-folder"></use></svg><span>资产</span></button>
+        </nav>
+        <div class="rail-bottom">
+          <button class="rail-button" id="profileBtn" type="button" title="个人"><svg aria-hidden="true"><use href="#i-user"></use></svg></button>
+          <button class="rail-button" id="settingsBtn" type="button" title="设置"><svg aria-hidden="true"><use href="#i-settings"></use></svg></button>
+        </div>
+      </aside>
+
+      <aside class="history-panel" aria-label="会话历史">
+        <div class="history-head">
+          <div><strong>EcRoom</strong><span>创作历史</span></div>
+          <button id="collapseSidebarBtn" class="icon-button" type="button" aria-label="折叠历史栏"><svg aria-hidden="true"><use href="#i-close"></use></svg></button>
+        </div>
+        <button id="newChatBtn" class="new-chat" type="button"><svg aria-hidden="true"><use href="#i-pen"></use></svg>新对话</button>
+        <div class="history-label">最近</div>
+        <div id="sessionList" class="session-list"></div>
+      </aside>
+
+      <button class="sidebar-peek" id="expandSidebarBtn" type="button" aria-label="展开历史栏"><svg aria-hidden="true"><use href="#i-menu"></use></svg></button>
+
+      <main class="creative-stage">
+        <section class="inspiration-screen active screen" id="inspirationScreen" aria-label="灵感首页">
+          <div class="top-composer">
+            <h1>EcRoom</h1>
+            <p class="product-line">把你的想法打磨成一杯醇厚的咖啡</p>
+            <form id="inspirationCreateForm" class="composer compact-composer">
+              <textarea id="inspirationRequest" rows="4" placeholder="写下需求、设定、平台、禁用表达，或者一段需要继续打磨的草稿。"></textarea>
+              <div class="composer-actions">
+                <button class="tool-button small-tool" id="inspirationSkillButton" type="button"><svg aria-hidden="true"><use href="#i-tool"></use></svg><span id="inspirationSkillLabel">使用技能</span></button>
+                <button class="send-button" type="submit" aria-label="开始生成"><svg aria-hidden="true"><use href="#i-send"></use></svg></button>
+              </div>
+            </form>
+          </div>
+
+          <section class="inspiration-feed">
+            <div class="feed-tabs">
+              <button class="feed-tab active" type="button" data-category="discover">发现</button>
+              <button class="feed-tab" type="button" data-category="short">短文</button>
+              <button class="feed-tab" type="button" data-category="campaign">活动</button>
+              <label class="feed-search"><svg aria-hidden="true"><use href="#i-search"></use></svg><input id="feedSearch" placeholder="" /></label>
+            </div>
+            <div id="inspirationGrid" class="inspiration-grid"></div>
+          </section>
+        </section>
+
+        <section class="generate-screen screen" id="generateScreen" aria-label="生成">
+          <div class="home-inner">
+            <h1>今天想创作什么？</h1>
+            <form id="createForm" class="composer large-composer">
+              <textarea id="request" rows="7" placeholder="把需求、规则、禁用表达、平台、角色设定或需要改的草稿都写在这里。"></textarea>
+              <div class="composer-actions">
+                <button class="tool-button small-tool" id="skillButton" type="button"><svg aria-hidden="true"><use href="#i-tool"></use></svg><span id="selectedSkillLabel">使用技能</span></button>
+                <button class="send-button" type="submit" aria-label="开始生成"><svg aria-hidden="true"><use href="#i-send"></use></svg></button>
+              </div>
+            </form>
+          </div>
+        </section>
+
+        <section class="chat-screen screen" id="chatScreen" aria-label="创作会话">
+          <header class="chat-header">
+            <div class="chat-title-block">
+              <p id="chatUpdatedAt">最新对话</p>
+              <div class="chat-title-row">
+                <h1 id="chatTitle">新的创作</h1>
+                <button class="icon-button title-edit-button" id="chatTitleEditBtn" type="button" aria-label="修改标题"><svg aria-hidden="true"><use href="#i-pen"></use></svg></button>
+              </div>
+            </div>
+          </header>
+          <div id="messageList" class="message-list"></div>
+          <form id="feedbackForm" class="composer chat-composer">
+            <textarea id="feedbackNote" rows="4" placeholder="继续告诉我怎么改。也可以直接贴改稿、补充平台要求、禁用词、角色设定或个人偏好。"></textarea>
+            <div class="composer-actions">
+              <button class="tool-button small-tool" id="chatSkillButton" type="button"><svg aria-hidden="true"><use href="#i-tool"></use></svg><span id="chatSkillLabel">使用技能</span></button>
+              <button class="send-button" type="submit" aria-label="提交反馈"><svg aria-hidden="true"><use href="#i-send"></use></svg></button>
+            </div>
+          </form>
+          <section id="learningPanel" class="learning-panel" hidden>
+            <button class="learning-head" id="learningToggleBtn" type="button">
+              <div>
+                <p>完成后可选沉淀</p>
+                <h2 id="learningSummary">发现了几条可以保存的偏好</h2>
+              </div>
+              <span id="learningToggleText">展开</span>
+            </button>
+            <div id="learningList" class="learning-list"></div>
+          </section>
+        </section>
+
+        <section class="assets-screen screen" id="assetsScreen" aria-label="资产库">
+          <header class="library-header">
+            <div>
+              <p>Assets</p>
+              <h1>资产库</h1>
+              <span>这里保存的是可复用的创作资产：关键需求、最终内容和可再次使用的提示词。</span>
+            </div>
+            <button class="ghost-button" id="assetNewButton" type="button">新建创作</button>
+          </header>
+          <div class="library-toolbar">
+            <div class="asset-filter" aria-label="资产筛选">
+              <button class="asset-filter-button active" type="button" data-asset-filter="all">全部</button>
+              <button class="asset-filter-button" type="button" data-asset-filter="created">创作</button>
+              <button class="asset-filter-button" type="button" data-asset-filter="collected">收藏</button>
+            </div>
+            <label class="feed-search"><svg aria-hidden="true"><use href="#i-search"></use></svg><input id="assetSearch" placeholder="角色、平台、标题、世界观" /></label>
+          </div>
+          <div id="assetGrid" class="asset-grid"></div>
+        </section>
+
+        <section class="asset-detail-screen screen" id="assetDetailScreen" aria-label="资产详情">
+          <button class="icon-button detail-back" id="assetBackButton" type="button" aria-label="返回资产库"><svg aria-hidden="true"><use href="#i-close"></use></svg></button>
+          <div class="asset-detail-layout">
+            <article class="asset-work">
+              <div id="assetWorkType" class="asset-work-type">内容资产</div>
+              <h1 id="assetDetailTitle">资产详情</h1>
+              <div id="assetFinalContent" class="asset-final-content"></div>
+            </article>
+            <aside class="asset-info">
+              <div class="asset-author"><span class="asset-avatar"><img src="/assets/ecroom-icon-64.png" alt="" /></span><strong>EcRoom</strong></div>
+              <div class="asset-meta" id="assetMeta"></div>
+              <div class="asset-section"><h2>关键需求</h2><p id="assetPrompt"></p></div>
+              <div class="asset-actions">
+                <button class="primary-button" id="remixAssetButton" type="button">做同款</button>
+                <button class="ghost-button" id="openAssetSessionButton" type="button">打开会话</button>
+              </div>
+            </aside>
+          </div>
+        </section>
+
+        <section class="profile-screen screen" id="profileScreen" aria-label="个人主页">
+          <button class="icon-button profile-share-icon" id="profileShareBtn" type="button" aria-label="分享主页"><svg aria-hidden="true"><use href="#i-share"></use></svg></button>
+          <div class="profile-layout">
+            <aside class="profile-card">
+              <button class="profile-avatar" id="profileAvatarBtn" type="button" aria-label="更换头像">
+                <img id="profileAvatarImage" alt="用户头像" />
+                <svg aria-hidden="true"><use href="#i-star"></use></svg>
+              </button>
+              <input id="avatarFileInput" class="sr-only" type="file" accept="image/*" />
+              <input id="profilePageNickname" class="profile-name-input" aria-label="昵称" />
+              <div class="profile-stats"><span id="profileWorksCount">0 作品</span><span id="profileLikesCount">0 喜欢</span><span id="profileCollectsCount">0 收藏</span></div>
+              <textarea id="profilePageBio" class="profile-bio-input" rows="4" placeholder="添加个人简介"></textarea>
+              <button class="primary-button" id="profilePageSaveBtn" type="button">保存资料</button>
+            </aside>
+            <section class="profile-content">
+              <div class="profile-tabs">
+                <button class="profile-tab active" type="button" data-profile-tab="published">已发布</button>
+                <button class="profile-tab" type="button" data-profile-tab="liked">赞过</button>
+                <button class="profile-tab" type="button" data-profile-tab="collected">收藏</button>
+              </div>
+              <div id="profileGrid" class="asset-grid profile-grid"></div>
+            </section>
+          </div>
+        </section>
+
+        <section class="settings-screen screen" id="settingsScreen" aria-label="设置">
+          <header class="settings-hero">
+            <div>
+              <p>Settings</p>
+              <h1>设置</h1>
+              <span>管理模型、偏好记忆和本地数据。</span>
+            </div>
+          </header>
+          <div class="settings-layout">
+            <nav class="settings-nav" aria-label="设置分区">
+              <button class="settings-nav-item active" type="button" data-settings-section="model"><strong>模型设置</strong><span>服务商、模型和 API Key</span></button>
+              <button class="settings-nav-item" type="button" data-settings-section="memory"><strong>偏好记忆</strong><span>确认后的偏好和候选策略</span></button>
+              <button class="settings-nav-item" type="button" data-settings-section="data"><strong>数据管理</strong><span>对话、资产和本地存储</span></button>
+            </nav>
+
+            <section class="settings-panel active" data-settings-panel="model">
+              <div class="settings-panel-head"><p>Model</p><h2>模型设置</h2><span>API Key 只保存在本地工作区，不会回显到页面。</span></div>
+              <form id="settingsForm" class="settings-form">
+                <label>服务商<select id="llmProvider"><option value="">沿用本地 .env</option><option value="mistral">Mistral</option><option value="openai">OpenAI</option><option value="deepseek">DeepSeek</option></select></label>
+                <label>模型<input id="llmModel" placeholder="mistral-small-latest" /></label>
+                <label>Base URL<input id="llmBaseUrl" placeholder="https://api.mistral.ai/v1" /></label>
+                <label>API Key<input id="llmApiKey" type="password" placeholder="留空则保留已有 key" autocomplete="off" /></label>
+                <div class="drawer-actions"><button class="ghost-button" id="testLlmBtn" type="button">测试连接</button><button class="primary-button" type="submit">保存模型</button></div>
+                <p class="helper-text" id="settingsHint">建议先用 Mistral 验证创作链路，后续可以切换 OpenAI 或 DeepSeek。</p>
+              </form>
+            </section>
+
+            <section class="settings-panel" data-settings-panel="memory">
+              <div class="settings-panel-head"><p>Memory</p><h2>偏好记忆</h2><span>这里只管理用户确认保存的偏好，系统不会把一次临时要求直接固化。</span></div>
+              <form id="memoryPolicyForm" class="settings-form compact-settings-form">
+                <label>候选展示上限<input id="memoryCandidateLimit" type="number" min="1" max="8" /></label>
+                <label>最低置信度<input id="memoryMinConfidence" type="number" min="0" max="1" step="0.05" /></label>
+                <label class="toggle-row"><input id="memoryCompleteOnly" type="checkbox" /><span>仅在作品完成后展示可保存偏好</span></label>
+                <div class="drawer-actions"><button class="primary-button" type="submit">保存记忆策略</button></div>
+              </form>
+              <section class="preference-settings settings-subsection">
+                <div class="preference-settings-head">
+                  <div><h3>已保存偏好</h3><p>删除后不会再参与后续创作召回。</p></div>
+                  <button class="ghost-button" id="refreshPreferencesBtn" type="button">刷新</button>
+                </div>
+                <div id="preferenceList" class="preference-list"></div>
+              </section>
+            </section>
+
+            <section class="settings-panel" data-settings-panel="data">
+              <div class="settings-panel-head"><p>Data</p><h2>数据管理</h2><span>EcRoom 的对话、资产、偏好和系统证据是分开管理的。</span></div>
+              <div class="settings-note-grid">
+                <article><strong>仅删除对话</strong><span>从历史移除会话，已确认偏好继续保留。</span></article>
+                <article><strong>清理本次记忆</strong><span>撤销本次候选和证据，不影响手动保存过的偏好。</span></article>
+                <article><strong>彻底删除</strong><span>移除原始会话文件和相关进化记录。</span></article>
+              </div>
+            </section>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <div class="skill-popover" id="skillMenu" aria-hidden="true">
+      <div class="popover-title">选择专家能力</div>
+      <button type="button" data-skill-id="creative_brief" data-skill="创作诊断" data-prompt="我有一个初步想法，请先帮我整理成创作 brief，再给出几个可继续推进的方向。"><strong>创作诊断</strong><span>模糊想法、需求拆解、路线判断</span></button>
+      <button type="button" data-skill-id="source_grounded" data-skill="资料驱动" data-prompt="我会提供资料、链接或规则，请先整理可用信息，再基于这些材料生成内容。"><strong>资料驱动</strong><span>链接、资料、规范、事实边界</span></button>
+      <button type="button" data-skill-id="narrative_canon" data-skill="叙事设定" data-prompt="我需要处理角色、世界观或剧情设定，请先锁定 canon，再生成可继续扩展的正文。"><strong>叙事设定</strong><span>角色、世界观、剧情一致性</span></button>
+      <button type="button" data-skill-id="publish_ready" data-skill="发布适配" data-prompt="请把这个内容改成适合发布的版本，自动处理平台语气、长度、标题和风险边界。"><strong>发布适配</strong><span>微博、小红书、公众号、活动页</span></button>
+      <button type="button" data-skill-id="revision_studio" data-skill="深度改稿" data-prompt="我会给出草稿和反馈，请保留有效信息，重写成更自然、更可用的版本。"><strong>深度改稿</strong><span>反馈响应、去模板感、风格重写</span></button>
+      <button type="button" data-skill-id="variant_lab" data-skill="方案实验" data-prompt="请围绕同一个目标生成几组差异明显的候选方案，并说明各自适合的方向。"><strong>方案实验</strong><span>标题、开头、卖点、多方向比较</span></button>
+    </div>
+
+    <section class="modal" id="renameModal" aria-hidden="true"><div class="modal-card"><h2>重命名对话</h2><input id="renameInput" placeholder="新的对话标题" /><div class="modal-actions"><button class="ghost-button" id="cancelRenameBtn" type="button">取消</button><button class="primary-button" id="confirmRenameBtn" type="button">确认</button></div></div></section>
+    <section class="modal" id="deleteModal" aria-hidden="true">
+      <div class="modal-card">
+        <h2>删除这条对话？</h2>
+        <p>你可以只整理历史，也可以让这条对话不再影响后续创作。</p>
+        <div class="delete-options" role="radiogroup" aria-label="删除方式">
+          <label><input type="radio" name="deleteMode" value="history" checked /><span><strong>仅删除对话</strong><small>从历史列表移除，已经确认的偏好继续保留。</small></span></label>
+          <label><input type="radio" name="deleteMode" value="revoke_memory" /><span><strong>同时清理本次未确认记忆</strong><small>撤销这次产生的证据和候选，不影响你手动保存过的偏好。</small></span></label>
+          <label><input type="radio" name="deleteMode" value="full" /><span><strong>彻底删除</strong><small>同时移除原始会话文件、相关证据和进化记录。</small></span></label>
+        </div>
+        <div class="modal-actions"><button class="ghost-button" id="cancelDeleteBtn" type="button">取消</button><button class="danger-button" id="confirmDeleteBtn" type="button">删除</button></div>
+      </div>
+    </section>
+    <section class="modal" id="applyEvolutionModal" aria-hidden="true"><div class="modal-card"><h2>应用这条改进？</h2><p>它会写入本地工作规则，并留下审阅记录。</p><textarea id="applyEvolutionNote" rows="3" placeholder="审批说明，可留空"></textarea><div class="modal-actions"><button class="ghost-button" id="cancelApplyEvolutionBtn" type="button">取消</button><button class="primary-button" id="confirmApplyEvolutionBtn" type="button">应用</button></div></div></section>
+    <section class="modal avatar-modal" id="avatarModal" aria-hidden="true">
+      <div class="avatar-editor">
+        <div class="modal-head"><h2>调整头像</h2><button class="icon-button" id="cancelAvatarBtn" type="button" aria-label="关闭"><svg aria-hidden="true"><use href="#i-close"></use></svg></button></div>
+        <div class="avatar-crop-stage"><canvas id="avatarCanvas" width="420" height="420"></canvas><div class="crop-ring" aria-hidden="true"></div></div>
+        <label class="avatar-zoom">缩放<input id="avatarZoom" type="range" min="0.6" max="3" step="0.01" value="1" /></label>
+        <div class="modal-actions"><button class="ghost-button" id="chooseAvatarBtn" type="button">重新选择</button><button class="primary-button" id="saveAvatarBtn" type="button">保存头像</button></div>
+      </div>
+    </section>
+    <section class="modal preview-modal" id="previewModal" aria-hidden="true">
+      <div class="preview-card">
+        <button class="icon-button preview-close" id="closePreviewBtn" type="button" aria-label="关闭"><svg aria-hidden="true"><use href="#i-close"></use></svg></button>
+        <article class="preview-main">
+          <div id="previewType" class="asset-work-type">灵感</div>
+          <h2 id="previewTitle">灵感详情</h2>
+          <div class="preview-section"><h3>完整提示词</h3><p id="previewPrompt"></p></div>
+          <div class="preview-section"><h3>最后版本</h3><p id="previewOutput"></p></div>
+        </article>
+        <aside class="preview-side">
+          <div class="asset-author"><span class="asset-avatar"><img src="/assets/ecroom-icon-64.png" alt="" /></span><strong>EcRoom</strong></div>
+          <div class="asset-meta" id="previewMeta"></div>
+          <div class="preview-actions">
+            <button class="ghost-button" id="likePreviewBtn" type="button">喜欢</button>
+            <button class="ghost-button" id="collectPreviewBtn" type="button">收藏</button>
+            <button class="primary-button" id="applyPreviewBtn" type="button">应用</button>
+          </div>
+        </aside>
+      </div>
+    </section>
+    <div id="toast" class="toast" role="status" aria-live="polite"></div>
+    <script src="/app.js"></script>
+  </body>
+</html>

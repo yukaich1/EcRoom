@@ -307,6 +307,8 @@ class CreativeRoomRunner:
         for session in self.memory.list_sessions(include_completed=True):
             if not session.get("completed"):
                 continue
+            if session.get("asset_deleted"):
+                continue
             if project_id and session.get("project_id", "default") != project_id:
                 continue
             try:
@@ -325,7 +327,21 @@ class CreativeRoomRunner:
                 raise
             return {"asset": asset, "manifest": None}
         session = next((item for item in self.memory.list_sessions(include_completed=True) if item.get("session_id") == asset_id), {})
+        if session.get("asset_deleted"):
+            raise FileNotFoundError(f"Asset not found: {asset_id}")
         return {"asset": _asset_from_state(state, title=str(session.get("title") or "")), "manifest": self.latest_manifest(asset_id)}
+
+    def delete_asset(self, asset_id: str) -> dict[str, object]:
+        if not asset_id:
+            raise ValueError("missing_asset_id")
+        post = next((item for item in self._read_published_posts() if item.get("post_id") == asset_id), None)
+        if post:
+            result = self.delete_post(asset_id)
+            result["source"] = "published"
+            return result
+        result = self.memory.hide_asset(asset_id)
+        self.metrics.record("asset_deleted", metadata={"asset_id": asset_id, "source": result.get("source", "session")})
+        return result
 
     def publish_defaults(self, work_id: str) -> dict[str, object]:
         asset = self._work_asset(work_id)

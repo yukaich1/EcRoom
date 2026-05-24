@@ -343,6 +343,7 @@ class MemoryStore:
                     "completed_at": item_meta.get("completed_at", ""),
                     "archive": item_meta.get("archive", ""),
                     "work_category": item_meta.get("work_category", ""),
+                    "asset_deleted": bool(item_meta.get("asset_deleted", False)),
                     "raw_request": data["intent"]["raw_request"],
                     "goal": data["intent"].get("goal", ""),
                     "medium": data["intent"].get("medium", ""),
@@ -385,6 +386,19 @@ class MemoryStore:
         item["updated_at_ts"] = self._session_path(session_id).stat().st_mtime
         self._write_session_meta(meta)
         return {"session_id": session_id, **item}
+
+    def hide_asset(self, session_id: str) -> dict[str, object]:
+        self.load_state(session_id)
+        meta = self._read_session_meta()
+        item = meta.setdefault(session_id, {})
+        if item.get("deleted"):
+            raise FileNotFoundError(f"Session not found: {session_id}")
+        item["asset_deleted"] = True
+        item["asset_deleted_at"] = utc_now_iso()
+        item["updated_at"] = utc_now_iso()
+        item["updated_at_ts"] = self._session_path(session_id).stat().st_mtime
+        self._write_session_meta(meta)
+        return {"deleted": True, "asset_id": session_id, "source": "session"}
 
     def delete_session(self, session_id: str, *, mode: str = "revoke_memory") -> dict[str, object]:
         self.load_state(session_id)

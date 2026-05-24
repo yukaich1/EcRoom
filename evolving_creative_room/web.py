@@ -256,17 +256,24 @@ class CreativeRoomWebHandler(BaseHTTPRequestHandler):
 
     def do_DELETE(self) -> None:
         path = urlparse(self.path).path
-        if path.startswith("/api/post/"):
-            post_id = path.rsplit("/", 1)[-1]
-            self._json(self.runner.delete_post(post_id))
-            return
-        if path.startswith("/api/session/"):
-            session_id = path.split("/")[-1]
-            payload = self._read_json()
-            mode = str(payload.get("mode", "revoke_memory")).strip() or "revoke_memory"
-            self._json(self.runner.delete_session(session_id, mode=mode))
-            return
-        self._json({"error": "not_found"}, HTTPStatus.NOT_FOUND)
+        try:
+            if path.startswith("/api/asset/"):
+                asset_id = path.rsplit("/", 1)[-1]
+                self._json(self.runner.delete_asset(asset_id))
+                return
+            if path.startswith("/api/post/"):
+                post_id = path.rsplit("/", 1)[-1]
+                self._json(self.runner.delete_post(post_id))
+                return
+            if path.startswith("/api/session/"):
+                session_id = path.split("/")[-1]
+                payload = self._read_json()
+                mode = str(payload.get("mode", "revoke_memory")).strip() or "revoke_memory"
+                self._json(self.runner.delete_session(session_id, mode=mode))
+                return
+            self._json({"error": "not_found"}, HTTPStatus.NOT_FOUND)
+        except (FileNotFoundError, ValueError) as exc:
+            self._json({"error": str(exc)}, HTTPStatus.BAD_REQUEST)
 
     def log_message(self, format: str, *args: object) -> None:
         return

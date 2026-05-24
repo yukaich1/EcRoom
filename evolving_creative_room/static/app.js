@@ -1330,26 +1330,96 @@ function renderAssetsPage() {
   }
   assets.forEach((rawAsset, index) => {
     const asset = normalizeAssetForDisplay(rawAsset, index);
-    const card = document.createElement("button");
-    card.type = "button";
+    const card = document.createElement("article");
+    card.tabIndex = 0;
+    card.setAttribute("role", "button");
+    card.setAttribute("aria-label", `打开资产：${asset.title || "未命名资产"}`);
     card.className = "asset-card";
     card.style.setProperty("--tile-index", index);
     card.style.setProperty("--tile-delay", `${(index % 9) * 28}ms`);
     const image = imageForCard(asset, index);
     card.classList.add("has-card-image");
+    const canDelete = canDeleteAsset(asset);
     card.innerHTML = `
       <img class="asset-card-image" src="${escapeHtml(image)}" alt="${escapeHtml(asset.title || "资产封面")}" />
+      ${canDelete ? `
+        <span class="asset-card-menu-wrap">
+          <button class="asset-card-menu-button" type="button" aria-label="资产操作" title="资产操作">
+            <svg aria-hidden="true"><use href="#i-more"></use></svg>
+          </button>
+          <span class="asset-card-menu" aria-hidden="true">
+            <button type="button" data-action="delete-asset" data-asset-id="${escapeHtml(asset.asset_id)}">
+              <svg aria-hidden="true"><use href="#i-trash"></use></svg>删除资产
+            </button>
+          </span>
+        </span>` : ""}
       <span>${escapeHtml(assetLabel(asset))}</span>
       <strong>${escapeHtml(asset.title || "未命名资产")}</strong>
       <small>${escapeHtml(truncate(normalizeCreativeText(asset.prompt || ""), 76))}</small>
       <p>${escapeHtml(truncate(normalizeCreativeText(asset.final_content || "还没有最终内容。"), 120))}</p>`;
-    card.addEventListener("click", () => {
-      if (asset.source === "published") openPublish(asset.post_id);
-      else if (isInspirationAsset(asset)) openPreview(asset);
-      else openAsset(asset.asset_id);
+    card.addEventListener("click", (event) => {
+      if (event.target.closest(".asset-card-menu-wrap")) return;
+      openAssetFromCard(asset);
+    });
+    card.addEventListener("keydown", (event) => {
+      if (event.target.closest(".asset-card-menu-wrap")) return;
+      if (event.key !== "Enter" && event.key !== " ") return;
+      event.preventDefault();
+      openAssetFromCard(asset);
+    });
+    const menuButton = card.querySelector(".asset-card-menu-button");
+    menuButton?.addEventListener("click", (event) => {
+      event.stopPropagation();
+      const menu = card.querySelector(".asset-card-menu");
+      const nextOpen = !menu?.classList.contains("open");
+      closeAssetCardMenus();
+      menu?.classList.toggle("open", nextOpen);
+      menu?.setAttribute("aria-hidden", nextOpen ? "false" : "true");
+    });
+    const deleteButton = card.querySelector('[data-action="delete-asset"]');
+    deleteButton?.addEventListener("click", async (event) => {
+      event.stopPropagation();
+      await deleteAssetFromCard(asset);
     });
     els.assetGrid.appendChild(card);
   });
+}
+
+function canDeleteAsset(asset) {
+  return Boolean(asset?.asset_id && !isInspirationAsset(asset));
+}
+
+function openAssetFromCard(asset) {
+  if (asset.source === "published") openPublish(asset.post_id);
+  else if (isInspirationAsset(asset)) openPreview(asset);
+  else openAsset(asset.asset_id);
+}
+
+function closeAssetCardMenus() {
+  document.querySelectorAll(".asset-card-menu.open").forEach((menu) => {
+    menu.classList.remove("open");
+    menu.setAttribute("aria-hidden", "true");
+  });
+}
+
+async function deleteAssetFromCard(asset) {
+  if (!canDeleteAsset(asset)) return;
+  closeAssetCardMenus();
+  const confirmed = window.confirm("删除这个资产？删除后不会影响已经沉淀的记忆和偏好。");
+  if (!confirmed) return;
+  setBusy(true, "删除资产");
+  try {
+    await api(`/api/asset/${asset.asset_id}`, { method: "DELETE" });
+    assetsCache = assetsCache.filter((item) => item.asset_id !== asset.asset_id && item.post_id !== asset.post_id);
+    postsCache = postsCache.filter((post) => post.post_id !== asset.post_id && post.post_id !== asset.asset_id);
+    renderAssetsPage();
+    if (currentScreenName === "profile") renderProfile();
+    showToast("资产已删除，记忆沉淀不受影响");
+  } catch (error) {
+    showToast(error.message);
+  } finally {
+    setBusy(false);
+  }
 }
 
 function renderAssetDetail(asset) {
@@ -2056,6 +2126,7 @@ function bindEvents() {
   document.addEventListener("click", (event) => {
     if (!event.target.closest("#skillMenu") && !event.target.closest(".tool-button")) closeSkillMenu();
     if (!event.target.closest(".session-row")) document.querySelectorAll(".session-menu.open").forEach((menu) => menu.classList.remove("open"));
+    if (!event.target.closest(".asset-card-menu-wrap")) closeAssetCardMenus();
   });
   els.sessionList.addEventListener("click", async (event) => {
     const row = event.target.closest(".session-row");

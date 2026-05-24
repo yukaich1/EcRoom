@@ -178,6 +178,24 @@ class SeedSessionTests(unittest.TestCase):
             self.assertFalse(any(item["post_id"] == draft["post_id"] for item in runner.published_posts_view()["posts"]))
             self.assertFalse(any(item.get("post_id") == draft["post_id"] for item in runner.assets_view()["assets"]))
 
+    def test_delete_created_asset_hides_asset_without_revoking_memory(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            runner = CreativeRoomRunner(Path(tmp), llm=FakeLLM())
+            state = runner.run_seed_session(request="帮我写一段魔女角色文案。", user_preferences=["冷一点"])
+            runner.complete_session(state.session_id, True)
+            before_records = runner.memory.list_records(limit=200, project_id="default")
+
+            self.assertTrue(any(item["asset_id"] == state.session_id for item in runner.assets_view()["assets"]))
+            deleted = runner.delete_asset(state.session_id)
+
+            self.assertTrue(deleted["deleted"])
+            self.assertFalse(any(item["asset_id"] == state.session_id for item in runner.assets_view()["assets"]))
+            self.assertEqual(runner.memory.load_state(state.session_id).session_id, state.session_id)
+            after_records = runner.memory.list_records(limit=200, project_id="default")
+            self.assertEqual(len(after_records), len(before_records))
+            session = next(item for item in runner.memory.list_sessions(include_completed=True) if item["session_id"] == state.session_id)
+            self.assertTrue(session["asset_deleted"])
+
     def test_liked_inspiration_can_later_be_collected(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             runner = CreativeRoomRunner(Path(tmp), llm=FakeLLM())

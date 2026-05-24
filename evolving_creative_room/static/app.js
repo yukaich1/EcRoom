@@ -5,26 +5,42 @@ let pendingDeleteId = "";
 let pendingEvolutionProposalId = "";
 let sessionsCache = [];
 let assetsCache = [];
+let postsCache = [];
 let currentManifest = null;
 let currentAsset = null;
+let currentPublishPost = null;
+let publishTags = [];
+let publishDefaultTags = [];
+let publishCoverDataUrl = "";
 let currentPreviewItem = null;
 let activeFeedCategory = "discover";
+let inspirationRotation = 0;
+let inspirationWheelLock = 0;
+let inspirationVisibleItems = [];
+let inspirationBatchIndex = 0;
+let inspirationRenderedKey = "";
 let activeProfileTab = "published";
 let activeAssetFilter = "all";
 let activeSettingsSection = "model";
+let currentScreenName = "inspiration";
 let pendingTypingTimer = null;
 let learningCollapsed = true;
 let learningCandidatesCache = [];
 let learningSessionCompleted = false;
 let avatarState = { image: null, offsetX: 0, offsetY: 0, scale: 1, minScale: 1, dragging: false, lastX: 0, lastY: 0 };
+let previousAssetScreen = "assets";
+let previousPublishScreen = "chat";
 
 const els = {
   appFrame: document.querySelector("#appFrame"),
+  bootScreen: document.querySelector("#bootScreen"),
+  bootCake: document.querySelector("#bootCake"),
   inspirationScreen: document.querySelector("#inspirationScreen"),
   generateScreen: document.querySelector("#generateScreen"),
   chatScreen: document.querySelector("#chatScreen"),
   assetsScreen: document.querySelector("#assetsScreen"),
   assetDetailScreen: document.querySelector("#assetDetailScreen"),
+  publishScreen: document.querySelector("#publishScreen"),
   profileScreen: document.querySelector("#profileScreen"),
   settingsScreen: document.querySelector("#settingsScreen"),
   inspirationNavBtn: document.querySelector("#inspirationNavBtn"),
@@ -49,6 +65,7 @@ const els = {
   feedTabs: document.querySelectorAll(".feed-tab"),
   inspirationGrid: document.querySelector("#inspirationGrid"),
   feedSearch: document.querySelector("#feedSearch"),
+  refreshFeedBtn: document.querySelector("#refreshFeedBtn"),
   assetSearch: document.querySelector("#assetSearch"),
   assetFilterButtons: document.querySelectorAll(".asset-filter-button"),
   assetGrid: document.querySelector("#assetGrid"),
@@ -61,6 +78,23 @@ const els = {
   assetMeta: document.querySelector("#assetMeta"),
   remixAssetButton: document.querySelector("#remixAssetButton"),
   openAssetSessionButton: document.querySelector("#openAssetSessionButton"),
+  publishBackBtn: document.querySelector("#publishBackBtn"),
+  publishTitle: document.querySelector("#publishTitle"),
+  publishBody: document.querySelector("#publishBody"),
+  publishTagChoices: document.querySelector("#publishTagChoices"),
+  publishTagInput: document.querySelector("#publishTagInput"),
+  publishTagList: document.querySelector("#publishTagList"),
+  publishCoverBtn: document.querySelector("#publishCoverBtn"),
+  publishCoverInput: document.querySelector("#publishCoverInput"),
+  publishCoverImage: document.querySelector("#publishCoverImage"),
+  publishCoverPlaceholder: document.querySelector("#publishCoverPlaceholder"),
+  publishPreviewCover: document.querySelector("#publishPreviewCover"),
+  publishPreviewTitle: document.querySelector("#publishPreviewTitle"),
+  publishPreviewBody: document.querySelector("#publishPreviewBody"),
+  publishPreviewTags: document.querySelector("#publishPreviewTags"),
+  publishDeleteBtn: document.querySelector("#publishDeleteBtn"),
+  publishSaveDraftBtn: document.querySelector("#publishSaveDraftBtn"),
+  publishSubmitBtn: document.querySelector("#publishSubmitBtn"),
   chatTitle: document.querySelector("#chatTitle"),
   chatUpdatedAt: document.querySelector("#chatUpdatedAt"),
   chatTitleEditBtn: document.querySelector("#chatTitleEditBtn"),
@@ -91,9 +125,17 @@ const els = {
   memoryCompleteOnly: document.querySelector("#memoryCompleteOnly"),
   profilePageNickname: document.querySelector("#profilePageNickname"),
   profilePageBio: document.querySelector("#profilePageBio"),
+  profileAvatarDisplay: document.querySelector("#profileAvatarDisplay"),
+  profileEditBtn: document.querySelector("#profileEditBtn"),
+  profileEditModal: document.querySelector("#profileEditModal"),
+  profileEditNickname: document.querySelector("#profileEditNickname"),
+  profileEditBio: document.querySelector("#profileEditBio"),
+  cancelProfileEditBtn: document.querySelector("#cancelProfileEditBtn"),
+  cancelProfileEditTextBtn: document.querySelector("#cancelProfileEditTextBtn"),
   profilePageSaveBtn: document.querySelector("#profilePageSaveBtn"),
   profileAvatarBtn: document.querySelector("#profileAvatarBtn"),
   profileAvatarImage: document.querySelector("#profileAvatarImage"),
+  profileEditAvatarImage: document.querySelector("#profileEditAvatarImage"),
   avatarFileInput: document.querySelector("#avatarFileInput"),
   profileShareBtn: document.querySelector("#profileShareBtn"),
   profileWorksCount: document.querySelector("#profileWorksCount"),
@@ -113,6 +155,10 @@ const els = {
   applyEvolutionNote: document.querySelector("#applyEvolutionNote"),
   cancelApplyEvolutionBtn: document.querySelector("#cancelApplyEvolutionBtn"),
   confirmApplyEvolutionBtn: document.querySelector("#confirmApplyEvolutionBtn"),
+  publishPromptModal: document.querySelector("#publishPromptModal"),
+  goPublishBtn: document.querySelector("#goPublishBtn"),
+  saveWorkOnlyBtn: document.querySelector("#saveWorkOnlyBtn"),
+  continueWorkBtn: document.querySelector("#continueWorkBtn"),
   avatarModal: document.querySelector("#avatarModal"),
   avatarCanvas: document.querySelector("#avatarCanvas"),
   avatarZoom: document.querySelector("#avatarZoom"),
@@ -122,6 +168,7 @@ const els = {
   previewModal: document.querySelector("#previewModal"),
   closePreviewBtn: document.querySelector("#closePreviewBtn"),
   previewType: document.querySelector("#previewType"),
+  previewImage: document.querySelector("#previewImage"),
   previewTitle: document.querySelector("#previewTitle"),
   previewPrompt: document.querySelector("#previewPrompt"),
   previewOutput: document.querySelector("#previewOutput"),
@@ -148,12 +195,20 @@ const skills = [
 ];
 
 const feedItems = [
-  { id: "seed_character_cold", category: "discover", title: "冷面新角色登场", type: "叙事设定", prompt: "写一个冷感新角色登场文案，适合后续改成微博宣发。要求：角色有压迫感，但不要中二；正文保留一个可继续扩展的世界观暗线。", final_content: "他走进来时，房间里先安静了一秒。\n\n没人知道他的名字，只看见那枚旧徽章被放在桌面中央。它来自早已消失的北境军团，也来自一场没人愿意再提起的失败。\n\n这不是英雄登场，更像一段旧账终于找到了债主。", tone: "cyan", skills: ["narrative_canon"], platforms: ["微博"] },
-  { id: "seed_xhs_campaign", category: "campaign", title: "小红书活动笔记", type: "发布适配", prompt: "把游戏版本活动包装成小红书体验笔记，不要太硬广。需要包含：一句自然标题、体验感开头、三个玩家会在意的亮点，以及避免夸张承诺的表达。", final_content: "标题：这个版本最打动我的，反而是那些很小的细节\n\n本来只是想上线看看新活动，结果被几个不太起眼的地方留住了。比如任务节奏没有催着你跑，角色对话里也藏了不少后续伏笔。它不是那种一眼很炸的更新，但玩下来会觉得世界真的往前走了一点。", tone: "amber", skills: ["publish_ready"], platforms: ["小红书"] },
-  { id: "seed_tide_city", category: "discover", title: "潮汐钟城市", type: "叙事设定", prompt: "写一段被潮汐钟控制的城市设定，带一点阴谋感。请输出：城市简介、核心冲突、三个可继续扩写的剧情钩子。", final_content: "这座城市每天只准在潮汐钟响起后醒来。\n\n钟声决定开市、审判、婚礼和葬礼，也决定一个人是否还能拥有明天。没人知道钟是谁造的，只知道每当它慢一拍，城里就会少掉一条街。\n\n剧情钩子：\n1. 守钟人发现自己的名字从城市档案里消失。\n2. 叛逃的修表师声称潮汐并不存在。\n3. 主角听见钟声里传来未来自己的求救。", tone: "violet", skills: ["narrative_canon"], platforms: [] },
-  { id: "seed_polish_human", category: "short", title: "去掉 AI 味", type: "深度改稿", prompt: "请把一段明显像 AI 的文案改得更像真人写作。保留核心信息，减少套路连接词，让语气更具体、更自然。", final_content: "改法不是简单把句子写短，而是先删掉那些看起来很正确、但没人真的会这么说的话。保留信息点，再把它们放回一个具体场景里。读起来像有人真的经历过，这篇稿子才会站得住。", tone: "green", skills: ["revision_studio"], platforms: [] },
-  { id: "seed_release_titles", category: "short", title: "发布节奏三连", type: "方案实验", prompt: "给我一组预热、上线当天、反馈转发的微博文案。要求每条都短，避免模板化感叹句，保留一点故事感。", final_content: "预热：有些门不是被打开的，是终于撑不住了。\n\n上线当天：新版本已开。先别急着做任务，去听听城门口那段对话。\n\n反馈转发：看到有人猜到了徽章的来历。只能说，你们离真相很近，也很危险。", tone: "red", skills: ["variant_lab"], platforms: ["微博"] },
-  { id: "seed_norm_boundary", category: "campaign", title: "平台规范边界", type: "资料驱动", prompt: "生成内容时自动检查小红书和微博的表达边界。请给出一版发布前检查清单，并写一段更稳妥的活动说明。", final_content: "发布前先看四件事：有没有夸张承诺，是否像硬广，是否暗示未证实效果，是否把平台规则写进正文里。\n\n稳妥版本：这次活动更适合慢慢体验。它的重点不是奖励堆得多，而是把角色关系和地图细节往前推了一步。感兴趣的话，可以从支线任务开始看。", tone: "blue", skills: ["source_grounded"], platforms: ["小红书", "微博"] },
+  { id: "seed_character_cold", category: "role", title: "冷面新角色登场", type: "叙事设定", image: "/assets/inspiration/character.jpg", prompt: "写一个冷感新角色登场文案，适合后续改成微博宣发。要求：角色有压迫感，但不要中二；正文保留一个可继续扩展的世界观暗线。", final_content: "他走进来时，房间里先安静了一秒。\n\n没人知道他的名字，只看见那枚旧徽章被放在桌面中央。它来自早已消失的北境军团，也来自一场没人愿意再提起的失败。\n\n这不是英雄登场，更像一段旧账终于找到了债主。", tone: "cyan", skills: ["narrative_canon"], platforms: ["微博"] },
+  { id: "seed_xhs_campaign", category: "campaign", title: "小红书活动笔记", type: "发布适配", image: "/assets/inspiration/campaign.jpg", prompt: "把游戏版本活动包装成小红书体验笔记，不要太硬广。需要包含：一句自然标题、体验感开头、三个玩家会在意的亮点，以及避免夸张承诺的表达。", final_content: "标题：这个版本最打动我的，反而是那些很小的细节\n\n本来只是想上线看看新活动，结果被几个不太起眼的地方留住了。比如任务节奏没有催着你跑，角色对话里也藏了不少后续伏笔。它不是那种一眼很炸的更新，但玩下来会觉得世界真的往前走了一点。", tone: "amber", skills: ["publish_ready"], platforms: ["小红书"] },
+  { id: "seed_tide_city", category: "world", title: "潮汐钟城市", type: "叙事设定", image: "/assets/inspiration/city.jpg", prompt: "写一段被潮汐钟控制的城市设定，带一点阴谋感。请输出：城市简介、核心冲突、三个可继续扩写的剧情钩子。", final_content: "这座城市每天只准在潮汐钟响起后醒来。\n\n钟声决定开市、审判、婚礼和葬礼，也决定一个人是否还能拥有明天。没人知道钟是谁造的，只知道每当它慢一拍，城里就会少掉一条街。\n\n剧情钩子：\n1. 守钟人发现自己的名字从城市档案里消失。\n2. 叛逃的修表师声称潮汐并不存在。\n3. 主角听见钟声里传来未来自己的求救。", tone: "violet", skills: ["narrative_canon"], platforms: [] },
+  { id: "seed_polish_human", category: "short", title: "去掉 AI 味", type: "深度改稿", image: "/assets/inspiration/writing.jpg", prompt: "请把一段明显像 AI 的文案改得更像真人写作。保留核心信息，减少套路连接词，让语气更具体、更自然。", final_content: "改法不是简单把句子写短，而是先删掉那些看起来很正确、但没人真的会这么说的话。保留信息点，再把它们放回一个具体场景里。读起来像有人真的经历过，这篇稿子才会站得住。", tone: "green", skills: ["revision_studio"], platforms: [] },
+  { id: "seed_release_titles", category: "short", title: "发布节奏三连", type: "方案实验", image: "/assets/inspiration/release.jpg", prompt: "给我一组预热、上线当天、反馈转发的微博文案。要求每条都短，避免模板化感叹句，保留一点故事感。", final_content: "预热：有些门不是被打开的，是终于撑不住了。\n\n上线当天：新版本已开。先别急着做任务，去听听城门口那段对话。\n\n反馈转发：看到有人猜到了徽章的来历。只能说，你们离真相很近，也很危险。", tone: "red", skills: ["variant_lab"], platforms: ["微博"] },
+  { id: "seed_norm_boundary", category: "campaign", title: "平台规范边界", type: "资料驱动", image: "/assets/inspiration/norm.jpg", prompt: "生成内容时自动检查小红书和微博的表达边界。请给出一版发布前检查清单，并写一段更稳妥的活动说明。", final_content: "发布前先看四件事：有没有夸张承诺，是否像硬广，是否暗示未证实效果，是否把平台规则写进正文里。\n\n稳妥版本：这次活动更适合慢慢体验。它的重点不是奖励堆得多，而是把角色关系和地图细节往前推了一步。感兴趣的话，可以从支线任务开始看。", tone: "blue", skills: ["source_grounded"], platforms: ["小红书", "微博"] },
+  { id: "seed_dialogue_spark", category: "role", title: "一句台词定人设", type: "角色文案", image: "/assets/inspiration/character.jpg", prompt: "围绕一个新角色写三句台词，每句都要暴露不同层面的性格：表面态度、隐藏动机、与主线的关系。", final_content: "1. “我不是来帮你的，我只是讨厌有人把局面弄得这么难看。”\n2. “名字可以换，旧账不会。”\n3. “你以为门后是答案，其实只是另一个人替你选好的问题。”", tone: "cyan", skills: ["narrative_canon"], platforms: [] },
+  { id: "seed_world_faction", category: "world", title: "阵营冲突卡", type: "世界观企划", image: "/assets/inspiration/city.jpg", prompt: "设计两个互相误解但都不完全错误的阵营，输出各自信念、冲突来源和一个可写成剧情的公共事件。", final_content: "旧钟会相信秩序来自稳定，哪怕稳定需要牺牲一部分真相。新潮派相信自由必须打破旧制度，哪怕打破之后没人知道明天怎么过。\n\n公共事件：一场停钟事故让两派第一次发现，自己守护的东西可能来自同一个谎言。", tone: "violet", skills: ["narrative_canon"], platforms: [] },
+  { id: "seed_brand_soft_launch", category: "campaign", title: "新品软启动", type: "活动宣发", image: "/assets/inspiration/campaign.jpg", prompt: "帮我把一个功能更新写成不硬广的新品软启动文案，适合公众号和小红书都能继续改。", final_content: "这次更新没有把所有变化都摆在第一眼。\n\n我们更想让你在使用过程中慢慢发现：有些步骤少了，有些选择更清楚了，有些原本需要绕路的地方终于顺了。它不是一次吵闹的发布，更像把桌面重新整理了一遍。", tone: "amber", skills: ["publish_ready"], platforms: ["小红书", "公众号"] },
+  { id: "seed_title_variants", category: "short", title: "标题五连发", type: "方案实验", image: "/assets/inspiration/release.jpg", prompt: "同一篇内容给我五个标题方向：冷感、生活化、悬念、观点、平台友好。不要使用夸张标点。", final_content: "冷感：那座城市终于慢了一拍\n生活化：我在一个会按钟声醒来的城市里住了一天\n悬念：钟停之后，第一条消失的是街道\n观点：好的设定，不一定要先解释世界\n平台友好：这个城市设定有点适合写成长篇", tone: "red", skills: ["variant_lab"], platforms: [] },
+  { id: "seed_revision_before_after", category: "short", title: "改稿前后对照", type: "深度改稿", image: "/assets/inspiration/writing.jpg", prompt: "把一段模板感很强的内容做前后对照式改稿，保留核心信息，但让读者感觉更像真人表达。", final_content: "原句的问题不是信息错，而是每个词都太用力。\n\n改稿时先删掉“重磅、全面、极致”这类空泛词，再把变化放进一个可感知的动作里。比如不要说体验全面升级，可以说：这次打开页面时，最先感觉到的是少等了两秒。", tone: "green", skills: ["revision_studio"], platforms: [] },
+  { id: "seed_event_brief", category: "campaign", title: "活动页 brief", type: "创作诊断", image: "/assets/inspiration/norm.jpg", prompt: "把一个活动想法整理成活动页 brief，包含目标用户、主卖点、内容结构和需要避免的表达风险。", final_content: "目标用户：已经了解产品，但还没有形成稳定使用习惯的人。\n主卖点：这次活动不是送福利，而是让用户用一个轻任务体验完整流程。\n结构：场景问题、活动机制、参与方式、结果展示、风险提示。\n避免：过度承诺、暗示收益、制造焦虑。", tone: "blue", skills: ["creative_brief"], platforms: [] },
+  { id: "seed_scene_hook", category: "world", title: "场景钩子", type: "世界观企划", image: "/assets/inspiration/city.jpg", prompt: "写三个可以接入游戏主线的场景钩子，每个都要有地点、异常和角色选择。", final_content: "1. 地点：废弃观测塔。异常：每到整点，塔顶会亮起不存在的星图。选择：上报，还是独自解读。\n2. 地点：地下车站。异常：末班车总会多停一站。选择：跟上去，还是拦住别人。\n3. 地点：旧档案室。异常：新档案比旧档案更先发黄。选择：相信记录，还是相信记忆。", tone: "violet", skills: ["narrative_canon"], platforms: [] },
+  { id: "seed_platform_dual", category: "campaign", title: "双平台改写", type: "发布适配", image: "/assets/inspiration/campaign.jpg", prompt: "同一个内容核心，分别改成微博和小红书两版。微博更短，小红书更像体验笔记，同时提醒表达差异。", final_content: "微博版：新版本今天开。建议先去城门口听一段对话，再决定从哪条支线开始。\n\n小红书版：这次更新我最喜欢的不是奖励，而是几个很细的场景变化。尤其是城门口那段对话，像是悄悄把后面的剧情先透了一点影子。", tone: "amber", skills: ["publish_ready"], platforms: ["微博", "小红书"] },
 ];
 
 const agentNames = {
@@ -171,6 +226,7 @@ const agentNames = {
 };
 
 initTheme();
+initBootScreen();
 
 async function api(path, options = {}) {
   const response = await fetch(path, { headers: { "Content-Type": "application/json" }, ...options });
@@ -190,6 +246,52 @@ function initTheme() {
   document.documentElement.dataset.theme = saved === "light" ? "light" : "dark";
 }
 
+function initBootScreen() {
+  if (!els.bootScreen) return;
+  let progress = 0;
+  const finish = () => {
+    updateBootProgress(100);
+    window.setTimeout(() => {
+      els.bootScreen.classList.add("hide");
+      window.setTimeout(() => els.bootScreen?.remove(), 620);
+    }, 260);
+  };
+  const timer = window.setInterval(() => {
+    progress = Math.min(100, progress + (progress < 72 ? 9 : 5));
+    updateBootProgress(progress);
+    if (progress >= 100) {
+      window.clearInterval(timer);
+      finish();
+    }
+  }, 72);
+  window.setTimeout(() => {
+    if (progress < 100) {
+      window.clearInterval(timer);
+      finish();
+    }
+  }, 1400);
+}
+
+function updateBootProgress(value) {
+  const pct = `${Math.round(value)}%`;
+  els.bootCake?.style.setProperty("--cake-progress", pct);
+}
+
+function cakeLoaderMarkup(className = "") {
+  return `
+    <span class="cake-loader ${className}" style="--cake-progress: 76%" aria-hidden="true">
+      <span class="cake-fill"></span>
+      <svg viewBox="0 0 96 96">
+        <path class="cake-candle" d="M32 17v15M48 12v20M64 17v15" />
+        <path class="cake-flame" d="M31 12c4 4 4 8 0 11-4-3-4-7 0-11ZM47 7c5 5 5 10 0 14-5-4-5-9 0-14ZM63 12c4 4 4 8 0 11-4-3-4-7 0-11Z" />
+        <path class="cake-icing" d="M21 40c8-10 14 5 22-3 7-7 12 5 20-1 6-4 10-3 12 4" />
+        <path class="cake-body" d="M17 39h62v36a9 9 0 0 1-9 9H26a9 9 0 0 1-9-9V39Z" />
+        <path class="cake-drip" d="M29 40v12M48 40v18M67 40v10" />
+        <path class="cake-plate" d="M13 84h70" />
+      </svg>
+    </span>`;
+}
+
 function toggleTheme() {
   const next = document.documentElement.dataset.theme === "light" ? "dark" : "light";
   document.documentElement.dataset.theme = next;
@@ -203,24 +305,45 @@ function setBusy(isBusy, text = "生成中") {
 }
 
 function showScreen(name, push = true) {
-  currentSessionId = name === "chat" ? currentSessionId : null;
+  const previousScreen = currentScreenName;
+  currentSessionId = name === "chat" || name === "publish" ? currentSessionId : null;
   if (name !== "assetDetail") currentAsset = null;
-  for (const screen of [els.inspirationScreen, els.generateScreen, els.chatScreen, els.assetsScreen, els.assetDetailScreen, els.profileScreen, els.settingsScreen]) {
-    screen.classList.remove("active");
+  for (const screen of [els.inspirationScreen, els.generateScreen, els.chatScreen, els.assetsScreen, els.assetDetailScreen, els.publishScreen, els.profileScreen, els.settingsScreen]) {
+    screen.classList.remove("active", "screen-enter");
   }
-  const target = name === "generate" ? els.generateScreen : name === "chat" ? els.chatScreen : name === "assets" ? els.assetsScreen : name === "assetDetail" ? els.assetDetailScreen : name === "profile" ? els.profileScreen : name === "settings" ? els.settingsScreen : els.inspirationScreen;
+  const target = name === "generate" ? els.generateScreen : name === "chat" ? els.chatScreen : name === "assets" ? els.assetsScreen : name === "assetDetail" ? els.assetDetailScreen : name === "publish" ? els.publishScreen : name === "profile" ? els.profileScreen : name === "settings" ? els.settingsScreen : els.inspirationScreen;
   target.classList.add("active");
+  target.dataset.motion = motionDirection(previousScreen, name);
+  window.requestAnimationFrame(() => target.classList.add("screen-enter"));
+  window.setTimeout(() => target.classList.remove("screen-enter"), 620);
+  document.body.dataset.screen = name;
+  currentScreenName = name;
   els.inspirationNavBtn.classList.toggle("active", name === "inspiration");
   els.generateNavBtn.classList.toggle("active", name === "generate" || name === "chat");
   els.assetButton.classList.toggle("active", name === "assets" || name === "assetDetail");
-  els.profileBtn.classList.toggle("active", name === "profile");
+  els.profileBtn.classList.toggle("active", name === "profile" || name === "publish");
   els.settingsBtn.classList.toggle("active", name === "settings");
   const historyVisible = name === "generate" || name === "chat";
   els.appFrame.classList.toggle("history-hidden", !historyVisible);
   if (push) {
-    const path = name === "generate" ? "/#generate" : name === "assets" ? "/assets" : name === "profile" ? "/profile" : name === "settings" ? `/settings/${activeSettingsSection}` : "/";
+    const path = name === "generate" ? "/#generate" : name === "assets" ? "/assets" : name === "profile" ? "/profile" : name === "settings" ? `/settings/${activeSettingsSection}` : name === "publish" && currentPublishPost ? `/publish/${currentPublishPost.post_id}` : "/";
     history.pushState({}, "", path);
   }
+}
+
+function motionDirection(previous, next) {
+  const order = ["inspiration", "generate", "chat", "assets", "assetDetail", "publish", "profile", "settings"];
+  if (next === "assetDetail" || next === "publish") return "depth";
+  if (previous === "assetDetail" && next === "assets") return "back";
+  return order.indexOf(next) >= order.indexOf(previous) ? "forward" : "back";
+}
+
+function pulseElement(element, className = "motion-pulse", duration = 520) {
+  if (!element) return;
+  element.classList.remove(className);
+  void element.offsetWidth;
+  element.classList.add(className);
+  window.setTimeout(() => element.classList.remove(className), duration);
 }
 
 async function openSession(sessionId, push = true) {
@@ -245,6 +368,7 @@ async function openAssets(push = true) {
 
 async function openProfile(push = true) {
   await loadAssets();
+  await loadPosts();
   renderProfile();
   showScreen("profile", false);
   if (push) history.pushState({}, "", "/profile");
@@ -260,6 +384,7 @@ async function openSettings(section = activeSettingsSection, push = true) {
 async function openAsset(assetId, push = true) {
   setBusy(true, "载入资产");
   try {
+    previousAssetScreen = currentScreenName === "assetDetail" ? previousAssetScreen : currentScreenName;
     const data = await api(`/api/asset/${assetId}`);
     currentAsset = data.asset || null;
     currentManifest = data.manifest || null;
@@ -270,6 +395,15 @@ async function openAsset(assetId, push = true) {
   } finally {
     setBusy(false);
   }
+}
+
+function backFromAsset() {
+  if (history.state?.assetId) {
+    history.back();
+    return;
+  }
+  if (previousAssetScreen === "profile") openProfile(false);
+  else openAssets(false);
 }
 
 async function renderChat(data, options = {}) {
@@ -402,7 +536,7 @@ function renderPendingChat(request, preview = {}, status = "正在打磨第一�
   item.innerHTML = `
     <div class="message-label">EcRoom</div>
     <div class="typing-card">
-      <div class="typing-title"><span class="typing-dot"></span><strong>${escapeHtml(status)}</strong></div>
+      <div class="typing-title">${cakeLoaderMarkup("cake-loader-mini")}<strong>${escapeHtml(status)}</strong></div>
       <div class="typing-line" id="typingLine"></div>
       <div class="workflow-steps" id="workflowSteps"></div>
     </div>`;
@@ -429,6 +563,7 @@ function renderWorkflowSteps(stages, activeIndex) {
   stages.forEach((stage, index) => {
     const step = document.createElement("div");
     step.className = `workflow-step ${index < activeIndex ? "done" : ""} ${index === activeIndex ? "active" : ""}`;
+    step.style.setProperty("--step-index", index);
     step.textContent = stage.name || agentNames[stage.role] || stage.role || "阶段";
     box.appendChild(step);
   });
@@ -452,7 +587,7 @@ function appendInlineTyping(status = "正在继续打磨", preview = {}) {
   item.innerHTML = `
     <div class="message-label">EcRoom</div>
     <div class="typing-card compact">
-      <div class="typing-title"><span class="typing-dot"></span><strong>${escapeHtml(status)}</strong></div>
+      <div class="typing-title">${cakeLoaderMarkup("cake-loader-mini")}<strong>${escapeHtml(status)}</strong></div>
       <div class="typing-line" id="typingLine"></div>
       <div class="workflow-steps" id="workflowSteps"></div>
     </div>`;
@@ -484,7 +619,7 @@ function stopPendingTyping() {
 
 function appendMessage(role, content, label) {
   const item = document.createElement("article");
-  item.className = `message ${role}`;
+  item.className = `message ${role} message-enter`;
   item.innerHTML = `<div class="message-label">${escapeHtml(label)}</div><div class="message-bubble"></div>`;
   item.querySelector(".message-bubble").textContent = normalizeCreativeText(content || "空内容");
   els.messageList.appendChild(item);
@@ -494,7 +629,7 @@ async function appendDraft(draft, comments, label = "创作版本", options = {}
   const item = document.createElement("article");
   item.className = "message assistant";
   const card = document.createElement("div");
-  card.className = "draft-card";
+  card.className = "draft-card draft-enter";
   card.innerHTML = `<div class="draft-card-head">${escapeHtml(label)}</div><div class="draft-content"></div>`;
   const contentEl = card.querySelector(".draft-content");
   const content = normalizeCreativeText(draft?.content || "还没有内容。");
@@ -542,15 +677,207 @@ async function toggleSessionCompleted() {
   if (!currentSessionId) return;
   const currentButton = document.querySelector(".draft-complete-button");
   const completed = currentButton?.dataset.completed !== "true";
+  currentButton?.closest(".draft-card")?.classList.add(completed ? "is-archiving" : "is-returning");
   setBusy(true, completed ? "确认完成" : "撤销完成");
   try {
     await api(`/api/session/${currentSessionId}/complete`, { method: "POST", body: JSON.stringify({ completed }) });
     const data = await api(`/api/session/${currentSessionId}`);
     await renderChat(data);
+    if (completed) openPublishPrompt();
     showToast(completed ? "话题已完成，可以选择是否保存偏好" : "已回到继续创作状态");
   } finally {
     setBusy(false);
   }
+}
+
+function openPublishPrompt() {
+  if (!currentSessionId) return;
+  els.publishPromptModal.classList.add("open");
+}
+
+function closePublishPrompt() {
+  els.publishPromptModal.classList.remove("open");
+}
+
+async function publishCurrentWork() {
+  if (!currentSessionId) return;
+  setBusy(true, "准备发布页");
+  try {
+    const data = await api("/api/publish/draft", { method: "POST", body: JSON.stringify({ work_id: currentSessionId }) });
+    closePublishPrompt();
+    await openPublish(data.post.post_id);
+  } finally {
+    setBusy(false);
+  }
+}
+
+async function continueCurrentWork() {
+  if (!currentSessionId) return closePublishPrompt();
+  closePublishPrompt();
+  await api(`/api/session/${currentSessionId}/complete`, { method: "POST", body: JSON.stringify({ completed: false }) });
+  const data = await api(`/api/session/${currentSessionId}`);
+  await renderChat(data);
+  showToast("已回到继续创作状态");
+}
+
+async function openPublish(postId, push = true) {
+  setBusy(true, "打开发布页");
+  try {
+    previousPublishScreen = currentScreenName === "publish" ? previousPublishScreen : currentScreenName;
+    const data = await api(`/api/post/${postId}`);
+    renderPublish(data);
+    showScreen("publish", false);
+    if (push) history.pushState({ postId }, "", `/publish/${postId}`);
+  } finally {
+    setBusy(false);
+  }
+}
+
+function renderPublish(data) {
+  const post = data.post || {};
+  currentPublishPost = post;
+  currentSessionId = post.session_id || currentSessionId;
+  publishTags = Array.isArray(post.tags) ? [...post.tags] : [];
+  publishDefaultTags = data.default_tags || publishDefaultTags;
+  publishCoverDataUrl = "";
+  els.publishTitle.value = post.title || "";
+  els.publishBody.value = normalizeCreativeText(post.body || "");
+  setPublishCover(post.cover_url || "");
+  if (els.publishDeleteBtn) els.publishDeleteBtn.hidden = !post.post_id;
+  renderPublishTags();
+  updatePublishPreview();
+}
+
+function setPublishCover(src) {
+  if (!src) {
+    els.publishCoverImage.removeAttribute("src");
+    els.publishPreviewCover.removeAttribute("src");
+    els.publishCoverBtn.classList.remove("has-image");
+    return;
+  }
+  els.publishCoverImage.src = src;
+  els.publishPreviewCover.src = src;
+  els.publishCoverBtn.classList.add("has-image");
+}
+
+function renderPublishTags() {
+  els.publishTagChoices.innerHTML = "";
+  for (const tag of publishDefaultTags) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "publish-tag-choice";
+    button.classList.toggle("active", publishTags.includes(tag));
+    button.textContent = tag;
+    button.addEventListener("click", () => togglePublishTag(tag));
+    els.publishTagChoices.appendChild(button);
+  }
+  els.publishTagList.innerHTML = "";
+  for (const tag of publishTags) {
+    const item = document.createElement("button");
+    item.type = "button";
+    item.className = "publish-tag-pill";
+    item.textContent = `${tag} ×`;
+    item.addEventListener("click", () => removePublishTag(tag));
+    els.publishTagList.appendChild(item);
+  }
+  updatePublishPreview();
+}
+
+function normalizeTagValue(value) {
+  return String(value || "").replace(/[#＃\s]/g, "").slice(0, 16);
+}
+
+function addPublishTag(value) {
+  const tag = normalizeTagValue(value);
+  if (!tag || publishTags.includes(tag) || publishTags.length >= 12) return;
+  publishTags.push(tag);
+  renderPublishTags();
+}
+
+function removePublishTag(tag) {
+  publishTags = publishTags.filter((item) => item !== tag);
+  renderPublishTags();
+}
+
+function togglePublishTag(tag) {
+  if (publishTags.includes(tag)) removePublishTag(tag);
+  else addPublishTag(tag);
+}
+
+function updatePublishPreview() {
+  if (!els.publishPreviewTitle) return;
+  els.publishPreviewTitle.textContent = els.publishTitle.value.trim() || "未命名作品";
+  els.publishPreviewBody.textContent = normalizeCreativeText(els.publishBody.value || "正文预览会显示在这里。");
+  els.publishPreviewTags.innerHTML = "";
+  for (const tag of publishTags) {
+    const span = document.createElement("span");
+    span.textContent = tag;
+    els.publishPreviewTags.appendChild(span);
+  }
+}
+
+function readPublishCover(file) {
+  if (!file) return;
+  if (!/^image\/(png|jpeg|webp)$/.test(file.type)) {
+    showToast("只支持 png、jpg、webp 图片");
+    return;
+  }
+  const reader = new FileReader();
+  reader.onload = () => {
+    publishCoverDataUrl = String(reader.result || "");
+    setPublishCover(publishCoverDataUrl);
+  };
+  reader.readAsDataURL(file);
+}
+
+async function savePublish(status = "draft") {
+  if (!currentPublishPost?.post_id) return;
+  const payload = {
+    title: els.publishTitle.value,
+    body: els.publishBody.value,
+    tags: publishTags,
+    status,
+    cover_data_url: publishCoverDataUrl,
+  };
+  setBusy(true, status === "published" ? "发布作品" : "保存草稿");
+  try {
+    const data = await api(`/api/post/${currentPublishPost.post_id}`, { method: "POST", body: JSON.stringify(payload) });
+    renderPublish(data);
+    await loadPosts();
+    showToast(status === "published" ? "已发布到个人主页" : "发布草稿已保存");
+    if (status === "published") openProfile();
+  } finally {
+    setBusy(false);
+  }
+}
+
+async function deleteCurrentPost() {
+  if (!currentPublishPost?.post_id) return;
+  const confirmed = window.confirm("删除后，这篇作品会从个人主页和资产库移除。确定删除吗？");
+  if (!confirmed) return;
+  setBusy(true, "删除作品");
+  try {
+    await api(`/api/post/${currentPublishPost.post_id}`, { method: "DELETE" });
+    currentPublishPost = null;
+    await loadPosts();
+    await loadAssets();
+    showToast("作品已删除");
+    if (previousPublishScreen === "assets") openAssets(false);
+    else openProfile(false);
+    history.pushState({}, "", previousPublishScreen === "assets" ? "/assets" : "/profile");
+  } finally {
+    setBusy(false);
+  }
+}
+
+function backFromPublish() {
+  if (history.state?.postId) {
+    history.back();
+    return;
+  }
+  if (previousPublishScreen === "profile") openProfile(false);
+  else if (currentSessionId) openSession(currentSessionId, false);
+  else showScreen("generate", false);
 }
 
 function typeText(element, text) {
@@ -628,6 +955,14 @@ async function loadAssets() {
   return assetsCache;
 }
 
+async function loadPosts() {
+  const data = await api("/api/posts?project_id=default");
+  postsCache = data.posts || [];
+  publishDefaultTags = data.default_tags || publishDefaultTags;
+  renderProfile();
+  return postsCache;
+}
+
 function renderSessions(sessions) {
   els.sessionList.innerHTML = "";
   if (!sessions.length) {
@@ -655,9 +990,82 @@ function renderSessions(sessions) {
 }
 
 function renderInspirationGrid() {
+  const items = currentInspirationPool();
+  const isDiscover = activeFeedCategory === "discover";
+  els.inspirationGrid.classList.toggle("space-carousel", isDiscover);
+  els.inspirationGrid.classList.toggle("board-grid", !isDiscover);
+  if (!isDiscover) {
+    renderBoardInspirationGrid(items);
+    return;
+  }
+  const batchCount = Math.max(1, Math.ceil(items.length / 8));
+  inspirationBatchIndex = ((inspirationBatchIndex % batchCount) + batchCount) % batchCount;
+  const start = inspirationBatchIndex * 8;
+  const batchSize = Math.min(8, items.length);
+  inspirationVisibleItems = Array.from({ length: batchSize }, (_, index) => items[(start + index) % items.length]).filter(Boolean);
+  inspirationRotation = ((inspirationRotation % Math.max(inspirationVisibleItems.length, 1)) + Math.max(inspirationVisibleItems.length, 1)) % Math.max(inspirationVisibleItems.length, 1);
+  const key = inspirationVisibleItems.map((item) => item.id || item.asset_id).join("|");
+  if (els.refreshFeedBtn) {
+    els.refreshFeedBtn.hidden = items.length <= 8;
+    els.refreshFeedBtn.textContent = "换一批";
+  }
+  if (key === inspirationRenderedKey) {
+    updateInspirationLayout();
+    return;
+  }
+  inspirationRenderedKey = key;
+  els.inspirationGrid.innerHTML = "";
+  inspirationVisibleItems.forEach((item, index) => {
+    const card = document.createElement("button");
+    card.type = "button";
+    card.className = `inspire-card tone-${item.tone || "cyan"} space-0`;
+    card.dataset.itemId = item.id || item.asset_id || "";
+    card.style.setProperty("--tile-index", index);
+    card.style.setProperty("--tile-delay", `${index * 34}ms`);
+    card.innerHTML = `
+      <img src="${escapeHtml(imageForCard(item, index))}" alt="${escapeHtml(item.title)}" loading="lazy" />
+      <span>${escapeHtml(item.type)}</span>
+      <strong>${escapeHtml(item.title)}</strong>
+      <small>${escapeHtml(truncate(item.prompt, 72))}</small>`;
+    card.addEventListener("click", () => openPreview(item));
+    els.inspirationGrid.appendChild(card);
+  });
+  updateInspirationLayout();
+}
+
+function renderBoardInspirationGrid(items) {
+  inspirationVisibleItems = items;
+  inspirationRotation = 0;
+  if (els.refreshFeedBtn) els.refreshFeedBtn.hidden = true;
+  const key = `${activeFeedCategory}|board|${items.map((item) => item.id || item.asset_id).join("|")}`;
+  if (key === inspirationRenderedKey) return;
+  inspirationRenderedKey = key;
+  els.inspirationGrid.innerHTML = "";
+  if (!items.length) {
+    els.inspirationGrid.innerHTML = '<div class="empty-state">没有找到对应灵感。</div>';
+    return;
+  }
+  items.forEach((item, index) => {
+    const card = document.createElement("button");
+    card.type = "button";
+    card.className = `inspire-card board-card tone-${item.tone || "cyan"}`;
+    card.dataset.itemId = item.id || item.asset_id || "";
+    card.style.setProperty("--tile-index", index);
+    card.style.setProperty("--tile-delay", `${(index % 12) * 28}ms`);
+    card.innerHTML = `
+      <img src="${escapeHtml(imageForCard(item, index))}" alt="${escapeHtml(item.title)}" loading="lazy" />
+      <span>${escapeHtml(item.type)}</span>
+      <strong>${escapeHtml(item.title)}</strong>
+      <small>${escapeHtml(truncate(item.prompt, 72))}</small>`;
+    card.addEventListener("click", () => openPreview(item));
+    els.inspirationGrid.appendChild(card);
+  });
+}
+
+function currentInspirationPool() {
   const query = (els.feedSearch?.value || "").trim();
-  const reusableAssets = assetsCache.filter((item) => item.source !== "inspiration" || item.collected);
-  const fromAssets = activeFeedCategory === "discover" ? reusableAssets.slice(0, 8).map((item, index) => ({
+  const reusableAssets = assetsCache.filter((item) => item.source !== "inspiration" || item.collected || item.liked);
+  const fromAssets = activeFeedCategory === "discover" ? reusableAssets.map((item, index) => ({
     id: item.asset_id,
     category: "discover",
     title: item.title || item.prompt,
@@ -667,25 +1075,98 @@ function renderInspirationGrid() {
     asset_id: item.asset_id,
     skills: item.skills || [],
     platforms: item.platforms || [],
+    image: imageForCard(item, index),
     tone: ["cyan", "amber", "violet", "green", "red", "blue"][index % 6],
   })) : [];
-  const sourceItems = feedItems.filter((item) => item.category === activeFeedCategory);
-  const items = [...sourceItems, ...fromAssets].filter((item) => !query || `${item.title}${item.type}${item.prompt}${item.final_content || ""}`.includes(query));
-  els.inspirationGrid.innerHTML = "";
-  for (const item of items) {
-    const card = document.createElement("button");
-    card.type = "button";
-    card.className = `inspire-card tone-${item.tone}`;
-    card.innerHTML = `<span>${escapeHtml(item.type)}</span><strong>${escapeHtml(item.title)}</strong><small>${escapeHtml(truncate(item.prompt, 58))}</small>`;
-    card.addEventListener("click", () => openPreview(item));
-    els.inspirationGrid.appendChild(card);
+  const sourceItems = activeFeedCategory === "discover" ? feedItems : feedItems.filter((item) => item.category === activeFeedCategory);
+  return [...sourceItems, ...fromAssets].filter((item) => !query || `${item.title}${item.type}${item.prompt}${item.final_content || ""}`.includes(query));
+}
+
+function inspirationSource(sourceId) {
+  return feedItems.find((item) => item.id === sourceId);
+}
+
+function normalizeAssetForDisplay(asset = {}, index = 0) {
+  const source = inspirationSource(asset.source_id);
+  if (!source) {
+    return { ...asset, image: imageForCard(asset, index), final_content: asset.final_content || "", prompt: asset.prompt || "" };
   }
+  return {
+    ...source,
+    ...asset,
+    title: asset.title || source.title,
+    type: asset.goal || source.type,
+    prompt: asset.prompt || source.prompt,
+    final_content: asset.final_content || source.final_content,
+    image: source.image || asset.image || imageForCard(asset, index),
+    skills: asset.skills?.length ? asset.skills : source.skills || [],
+    platforms: asset.platforms?.length ? asset.platforms : source.platforms || [],
+    category: asset.category || source.category,
+  };
+}
+
+function updateInspirationLayout() {
+  const total = Math.max(inspirationVisibleItems.length, 1);
+  els.inspirationGrid.querySelectorAll(".inspire-card").forEach((card, index) => {
+    const slot = ((index - inspirationRotation) % total + total) % total;
+    for (let i = 0; i < 8; i += 1) card.classList.remove(`space-${i}`);
+    card.classList.add(`space-${slot}`);
+    card.dataset.slot = String(slot);
+    card.style.zIndex = String(slotZIndex(slot));
+  });
+}
+
+function rotateInspiration(delta) {
+  if (!inspirationVisibleItems.length) return;
+  const now = Date.now();
+  if (now - inspirationWheelLock < 170) return;
+  inspirationWheelLock = now;
+  inspirationRotation += delta > 0 ? 1 : -1;
+  updateInspirationLayout();
+}
+
+function slotZIndex(slot) {
+  return [8, 7, 5, 3, 2, 3, 5, 7][slot] || 1;
+}
+
+function refreshInspirationBatch() {
+  inspirationBatchIndex += 1;
+  inspirationRotation = 0;
+  inspirationRenderedKey = "";
+  renderInspirationGrid();
+}
+
+function handleInspirationWheel(event) {
+  if (window.matchMedia("(max-width: 760px)").matches) return;
+  if (activeFeedCategory !== "discover") return;
+  event.preventDefault();
+  rotateInspiration(event.deltaY || event.deltaX || 0);
+}
+
+function updateInspirationParallax(event) {
+  if (!els.inspirationGrid) return;
+  const rect = els.inspirationGrid.getBoundingClientRect();
+  if (!rect.width || !rect.height) return;
+  const mx = ((event.clientX - rect.left) / rect.width - 0.5).toFixed(3);
+  const my = ((event.clientY - rect.top) / rect.height - 0.5).toFixed(3);
+  els.inspirationGrid.style.setProperty("--mx", mx);
+  els.inspirationGrid.style.setProperty("--my", my);
+}
+
+function resetInspirationParallax() {
+  if (!els.inspirationGrid) return;
+  els.inspirationGrid.style.setProperty("--mx", "0");
+  els.inspirationGrid.style.setProperty("--my", "0");
 }
 
 function openPreview(item) {
   const related = relatedAsset(item);
   const collectedAssetId = related?.collected ? related.asset_id : "";
   currentPreviewItem = { ...item, liked: Boolean(item.liked || related?.liked), asset_id: item.asset_id || collectedAssetId };
+  if (els.previewImage) {
+    els.previewImage.src = imageForCard(currentPreviewItem);
+    els.previewImage.alt = currentPreviewItem.title || "灵感封面";
+  }
   els.previewTitle.textContent = currentPreviewItem.title || "灵感详情";
   els.previewType.textContent = currentPreviewItem.type || assetLabel(currentPreviewItem);
   els.previewPrompt.textContent = normalizeCreativeText(currentPreviewItem.prompt || "无");
@@ -706,7 +1187,7 @@ function closePreview() {
 }
 
 function categoryName(category) {
-  return { discover: "发现", short: "短文", campaign: "活动" }[category] || "发现";
+  return { discover: "发现", short: "短文", campaign: "活动", role: "角色", world: "世界观" }[category] || "发现";
 }
 
 function isCollected(item) {
@@ -714,7 +1195,18 @@ function isCollected(item) {
 }
 
 function relatedAsset(item) {
-  return assetsCache.find((asset) => asset.source_id === item.id || asset.asset_id === item.asset_id);
+  const sourceId = item.source_id || item.id || "";
+  return assetsCache.find((asset) => (sourceId && asset.source_id === sourceId) || asset.asset_id === item.asset_id);
+}
+
+function isInspirationAsset(item = {}) {
+  return item.source === "inspiration" || Boolean(item.source_id && inspirationSource(item.source_id));
+}
+
+function refreshVisibleCollections() {
+  renderInspirationGrid();
+  if (currentScreenName === "assets") renderAssetsPage();
+  if (currentScreenName === "profile") renderProfile();
 }
 
 async function collectPreview() {
@@ -727,6 +1219,7 @@ async function collectPreview() {
   });
   showToast(collected ? "已取消收藏" : "已收藏到资产库");
   await loadAssets();
+  refreshVisibleCollections();
   currentPreviewItem = { ...item, asset_id: data.asset.asset_id };
   openPreview(currentPreviewItem);
 }
@@ -741,7 +1234,8 @@ async function likePreview() {
   });
   currentPreviewItem = { ...item, liked, asset_id: data.asset.asset_id };
   await loadAssets();
-  els.likePreviewBtn.textContent = liked ? "已喜欢" : "喜欢";
+  refreshVisibleCollections();
+  openPreview(currentPreviewItem);
 }
 
 function inspirationPayload(item, overrides = {}) {
@@ -755,8 +1249,21 @@ function inspirationPayload(item, overrides = {}) {
     category: item.category || "discover",
     skills: item.skills || [],
     platforms: item.platforms || [],
+    image: imageForCard(item),
     ...overrides,
   };
+}
+
+function imageForCard(item = {}, index = 0) {
+  const fallback = [
+    "/assets/inspiration/writing.jpg",
+    "/assets/inspiration/character.jpg",
+    "/assets/inspiration/city.jpg",
+    "/assets/inspiration/campaign.jpg",
+    "/assets/inspiration/release.jpg",
+    "/assets/inspiration/norm.jpg",
+  ];
+  return item.image || item.cover_url || item.media_url || fallback[index % fallback.length];
 }
 
 function applyPreview() {
@@ -765,13 +1272,14 @@ function applyPreview() {
   closePreview();
   showScreen("generate");
   history.pushState({}, "", "/#generate");
+  pulseElement(els.createForm, "composer-arrive", 680);
   els.request.focus();
 }
 
 function renderProfile() {
   if (!els.profileGrid) return;
   if (!["published", "liked", "collected"].includes(activeProfileTab)) activeProfileTab = "published";
-  const works = assetsCache.filter((asset) => asset.source !== "inspiration");
+  const works = postsCache.filter((post) => post.status === "published");
   const liked = assetsCache.filter((asset) => asset.liked);
   const collected = assetsCache.filter((asset) => asset.source === "inspiration" && asset.collected);
   const source = activeProfileTab === "liked" ? liked : activeProfileTab === "collected" ? collected : works;
@@ -783,17 +1291,27 @@ function renderProfile() {
     els.profileGrid.innerHTML = '<div class="empty-state">暂无内容。</div>';
     return;
   }
-  for (const asset of source) {
+  source.forEach((asset, index) => {
+    const displayAsset = normalizeAssetForDisplay(asset, index);
     const card = document.createElement("button");
     card.type = "button";
     card.className = "asset-card profile-work-card";
+    card.style.setProperty("--tile-index", index);
+    card.style.setProperty("--tile-delay", `${(index % 9) * 28}ms`);
+    const image = imageForCard(displayAsset, index);
+    card.classList.add("has-card-image");
     card.innerHTML = `
-      <span>${escapeHtml(assetLabel(asset))}</span>
-      <strong>${escapeHtml(asset.title || "未命名资产")}</strong>
-      <small>${escapeHtml(truncate(normalizeCreativeText(asset.prompt || ""), 70))}</small>`;
-    card.addEventListener("click", () => openAsset(asset.asset_id));
+      <img class="asset-card-image" src="${escapeHtml(image)}" alt="${escapeHtml(displayAsset.title || "内容封面")}" />
+      <span>${escapeHtml(assetLabel(displayAsset))}</span>
+      <strong>${escapeHtml(displayAsset.title || "未命名资产")}</strong>
+      <small>${escapeHtml(truncate(normalizeCreativeText(activeProfileTab === "published" ? displayAsset.body || displayAsset.final_content || "" : displayAsset.prompt || ""), 70))}</small>`;
+    card.addEventListener("click", () => {
+      if (activeProfileTab === "published" || displayAsset.source === "published") openPublish(displayAsset.post_id);
+      else if (isInspirationAsset(displayAsset)) openPreview(displayAsset);
+      else openAsset(displayAsset.asset_id);
+    });
     els.profileGrid.appendChild(card);
-  }
+  });
 }
 
 function renderAssetsPage() {
@@ -810,34 +1328,46 @@ function renderAssetsPage() {
     els.assetGrid.innerHTML = '<div class="empty-state">还没有可展示的资产。完成一次创作后，最终内容会自动进入这里。</div>';
     return;
   }
-  for (const asset of assets) {
+  assets.forEach((rawAsset, index) => {
+    const asset = normalizeAssetForDisplay(rawAsset, index);
     const card = document.createElement("button");
     card.type = "button";
     card.className = "asset-card";
+    card.style.setProperty("--tile-index", index);
+    card.style.setProperty("--tile-delay", `${(index % 9) * 28}ms`);
+    const image = imageForCard(asset, index);
+    card.classList.add("has-card-image");
     card.innerHTML = `
+      <img class="asset-card-image" src="${escapeHtml(image)}" alt="${escapeHtml(asset.title || "资产封面")}" />
       <span>${escapeHtml(assetLabel(asset))}</span>
       <strong>${escapeHtml(asset.title || "未命名资产")}</strong>
       <small>${escapeHtml(truncate(normalizeCreativeText(asset.prompt || ""), 76))}</small>
       <p>${escapeHtml(truncate(normalizeCreativeText(asset.final_content || "还没有最终内容。"), 120))}</p>`;
-    card.addEventListener("click", () => openAsset(asset.asset_id));
+    card.addEventListener("click", () => {
+      if (asset.source === "published") openPublish(asset.post_id);
+      else if (isInspirationAsset(asset)) openPreview(asset);
+      else openAsset(asset.asset_id);
+    });
     els.assetGrid.appendChild(card);
-  }
+  });
 }
 
 function renderAssetDetail(asset) {
   if (!asset) return;
-  els.assetDetailTitle.textContent = asset.title || "未命名资产";
-  els.assetWorkType.textContent = assetLabel(asset);
-  els.assetFinalContent.textContent = normalizeCreativeText(asset.final_content || "这条资产还没有最终内容。");
-  els.assetPrompt.textContent = normalizeCreativeText(asset.prompt || "无");
+  const displayAsset = normalizeAssetForDisplay(asset);
+  els.assetDetailTitle.textContent = displayAsset.title || "未命名资产";
+  els.assetWorkType.textContent = assetLabel(displayAsset);
+  els.assetFinalContent.textContent = normalizeCreativeText(displayAsset.final_content || "这条资产还没有最终内容。");
+  els.assetPrompt.textContent = normalizeCreativeText(displayAsset.prompt || "无");
   const meta = [];
-  if (asset.updated_at) meta.push(asset.updated_at.slice(0, 10));
-  if (asset.platforms?.length) meta.push(asset.platforms.join(" / "));
-  if (asset.skills?.length) meta.push(asset.skills.join(" / "));
+  if (displayAsset.updated_at) meta.push(displayAsset.updated_at.slice(0, 10));
+  if (displayAsset.platforms?.length) meta.push(displayAsset.platforms.join(" / "));
+  if (displayAsset.skills?.length) meta.push(displayAsset.skills.join(" / "));
   els.assetMeta.textContent = meta.join("  |  ") || "内容创作资产";
 }
 
 function assetLabel(asset) {
+  if (asset.tags?.length) return asset.tags.slice(0, 2).join(" / ");
   if (asset.platforms?.length) return asset.platforms.slice(0, 2).join(" / ");
   if (asset.goal) return asset.goal;
   return "内容资产";
@@ -979,10 +1509,30 @@ async function loadSettings() {
   els.memoryMinConfidence.value = memory.min_confidence ?? 0.35;
   els.memoryCompleteOnly.checked = memory.complete_only !== false;
   const profile = data.profile || {};
-  els.profilePageNickname.value = profile.nickname || "创作者";
-  els.profilePageBio.value = profile.bio || "";
+  setProfileText(profile.nickname || "创作者", profile.bio || "");
   setAvatarPreview(profile.avatar_data || "");
   await loadPreferences();
+}
+
+function setProfileText(nickname, bio) {
+  const cleanName = String(nickname || "创作者").trim() || "创作者";
+  const cleanBio = String(bio || "").trim();
+  els.profilePageNickname.textContent = cleanName;
+  els.profilePageBio.textContent = cleanBio || "添加个人简介";
+  els.profilePageBio.classList.toggle("is-empty", !cleanBio);
+  if (els.profileEditNickname) els.profileEditNickname.value = cleanName;
+  if (els.profileEditBio) els.profileEditBio.value = cleanBio;
+}
+
+function openProfileEdit() {
+  els.profileEditNickname.value = els.profilePageNickname.textContent.trim() || "创作者";
+  els.profileEditBio.value = els.profilePageBio.classList.contains("is-empty") ? "" : els.profilePageBio.textContent.trim();
+  els.profileEditModal.classList.add("open");
+  requestAnimationFrame(() => els.profileEditNickname.focus());
+}
+
+function closeProfileEdit() {
+  els.profileEditModal.classList.remove("open");
 }
 
 function setSettingsSection(section, push = true) {
@@ -1061,23 +1611,23 @@ async function saveMemoryPolicy(event) {
 }
 
 async function saveProfile() {
-  const nickname = els.profilePageNickname.value;
-  const bio = els.profilePageBio.value;
+  const nickname = els.profileEditNickname.value;
+  const bio = els.profileEditBio.value;
   await api("/api/settings", { method: "POST", body: JSON.stringify({ profile: { nickname, bio } }) });
-  els.profilePageNickname.value = nickname;
-  els.profilePageBio.value = bio;
+  setProfileText(nickname, bio);
+  closeProfileEdit();
   showToast("个人资料已保存");
 }
 
 function setAvatarPreview(dataUrl) {
   if (!els.profileAvatarImage) return;
-  if (dataUrl) {
-    els.profileAvatarImage.src = dataUrl;
-    els.profileAvatarBtn.classList.add("has-image");
-  } else {
-    els.profileAvatarImage.removeAttribute("src");
-    els.profileAvatarBtn.classList.remove("has-image");
+  const images = [els.profileAvatarImage, els.profileEditAvatarImage].filter(Boolean);
+  const shells = [els.profileAvatarDisplay, els.profileAvatarBtn].filter(Boolean);
+  for (const image of images) {
+    if (dataUrl) image.src = dataUrl;
+    else image.removeAttribute("src");
   }
+  for (const shell of shells) shell.classList.toggle("has-image", Boolean(dataUrl));
 }
 
 function openAvatarPicker() {
@@ -1196,6 +1746,7 @@ async function createSessionFrom(textarea) {
     textarea.focus();
     return;
   }
+  pulseElement(textarea.closest(".composer"), "composer-launch", 620);
   setBusy(true, "正在创作");
   const activeSkill = selectedSkill;
   const preferences = activeSkill ? `使用技能：${activeSkill.id}` : "";
@@ -1226,6 +1777,7 @@ async function sendFeedback(event) {
   if (!currentSessionId) return showToast("先开启一个对话");
   const note = els.feedbackNote.value.trim();
   if (!note) return showToast("写一点反馈或补充要求");
+  pulseElement(els.feedbackForm, "composer-launch", 520);
   setBusy(true, "根据反馈生成");
   appendMessage("user", note, "反馈");
   const activeSkill = selectedSkill;
@@ -1354,7 +1906,7 @@ function bindEvents() {
   els.themeToggleBtn.addEventListener("click", toggleTheme);
   els.chatTitleEditBtn.addEventListener("click", editCurrentTitle);
   els.assetNewButton.addEventListener("click", () => showScreen("generate"));
-  els.assetBackButton.addEventListener("click", () => openAssets());
+  els.assetBackButton.addEventListener("click", backFromAsset);
   els.assetSearch.addEventListener("input", renderAssetsPage);
   els.assetFilterButtons.forEach((button) => button.addEventListener("click", () => {
     activeAssetFilter = button.dataset.assetFilter || "all";
@@ -1363,19 +1915,44 @@ function bindEvents() {
   }));
   els.feedTabs.forEach((button) => button.addEventListener("click", () => {
     activeFeedCategory = button.dataset.category || "discover";
+    inspirationRotation = 0;
+    inspirationBatchIndex = 0;
+    inspirationRenderedKey = "";
     els.feedTabs.forEach((item) => item.classList.toggle("active", item === button));
     renderInspirationGrid();
   }));
+  els.refreshFeedBtn.addEventListener("click", refreshInspirationBatch);
+  els.inspirationGrid.addEventListener("pointermove", updateInspirationParallax);
+  els.inspirationGrid.addEventListener("pointerleave", resetInspirationParallax);
+  els.inspirationGrid.addEventListener("wheel", handleInspirationWheel, { passive: false });
   els.remixAssetButton.addEventListener("click", () => {
     if (!currentAsset) return;
-    els.request.value = currentAsset.prompt || "";
+    els.request.value = currentAsset.iteration_prompt || currentAsset.prompt || "";
     showScreen("generate");
     history.pushState({}, "", "/#generate");
+    pulseElement(els.createForm, "composer-arrive", 680);
     els.request.focus();
   });
   els.openAssetSessionButton.addEventListener("click", () => {
     if (currentAsset?.session_id) openSession(currentAsset.session_id);
   });
+  els.publishBackBtn.addEventListener("click", backFromPublish);
+  els.publishTitle.addEventListener("input", updatePublishPreview);
+  els.publishBody.addEventListener("input", updatePublishPreview);
+  els.publishTagInput.addEventListener("keydown", (event) => {
+    if (event.key !== "Enter") return;
+    event.preventDefault();
+    addPublishTag(els.publishTagInput.value);
+    els.publishTagInput.value = "";
+  });
+  els.publishCoverBtn.addEventListener("click", () => els.publishCoverInput.click());
+  els.publishCoverInput.addEventListener("change", (event) => {
+    readPublishCover(event.target.files?.[0]);
+    event.target.value = "";
+  });
+  els.publishDeleteBtn.addEventListener("click", deleteCurrentPost);
+  els.publishSaveDraftBtn.addEventListener("click", () => savePublish("draft"));
+  els.publishSubmitBtn.addEventListener("click", () => savePublish("published"));
   els.skillButton.addEventListener("click", () => openSkillMenu(els.skillButton));
   els.inspirationSkillButton.addEventListener("click", () => openSkillMenu(els.inspirationSkillButton));
   els.chatSkillButton.addEventListener("click", () => openSkillMenu(els.chatSkillButton));
@@ -1384,7 +1961,10 @@ function bindEvents() {
   els.settingsForm.addEventListener("submit", saveSettings);
   els.memoryPolicyForm.addEventListener("submit", saveMemoryPolicy);
   els.settingsNavItems.forEach((button) => button.addEventListener("click", () => setSettingsSection(button.dataset.settingsSection)));
+  els.profileEditBtn.addEventListener("click", openProfileEdit);
   els.profilePageSaveBtn.addEventListener("click", saveProfile);
+  els.cancelProfileEditBtn.addEventListener("click", closeProfileEdit);
+  els.cancelProfileEditTextBtn.addEventListener("click", closeProfileEdit);
   els.profileAvatarBtn.addEventListener("click", openAvatarPicker);
   els.avatarFileInput.addEventListener("change", (event) => {
     loadAvatarFile(event.target.files?.[0]);
@@ -1432,7 +2012,12 @@ function bindEvents() {
     renderProfile();
   }));
   els.llmProvider.addEventListener("change", setProviderDefaults);
-  els.feedSearch.addEventListener("input", renderInspirationGrid);
+  els.feedSearch.addEventListener("input", () => {
+    inspirationRotation = 0;
+    inspirationBatchIndex = 0;
+    inspirationRenderedKey = "";
+    renderInspirationGrid();
+  });
   els.collapseSidebarBtn.addEventListener("click", () => els.appFrame.classList.add("history-collapsed"));
   els.expandSidebarBtn.addEventListener("click", () => els.appFrame.classList.remove("history-collapsed"));
   els.testLlmBtn.addEventListener("click", async () => {
@@ -1499,6 +2084,9 @@ function bindEvents() {
   els.confirmDeleteBtn.addEventListener("click", confirmDelete);
   els.cancelApplyEvolutionBtn.addEventListener("click", () => closeModal("applyEvolutionModal"));
   els.confirmApplyEvolutionBtn.addEventListener("click", confirmApplyEvolution);
+  els.goPublishBtn.addEventListener("click", publishCurrentWork);
+  els.saveWorkOnlyBtn.addEventListener("click", closePublishPrompt);
+  els.continueWorkBtn.addEventListener("click", continueCurrentWork);
   if (els.evolutionList) {
     els.evolutionList.addEventListener("click", (event) => {
       const button = event.target.closest("button[data-proposal-id]");
@@ -1518,6 +2106,8 @@ function bindEvents() {
 async function bootFromRoute(push = false) {
   const assetMatch = location.pathname.match(/^\/asset\/([^/]+)$/);
   if (assetMatch) return openAsset(assetMatch[1], push);
+  const publishMatch = location.pathname.match(/^\/publish\/([^/]+)$/);
+  if (publishMatch) return openPublish(publishMatch[1], push);
   const match = location.pathname.match(/^\/chat\/([^/]+)$/);
   if (match) return openSession(match[1], push);
   if (location.pathname === "/assets") return openAssets(push);
@@ -1533,6 +2123,7 @@ async function boot() {
     await loadSettings();
     await loadSessions();
     await loadAssets();
+    await loadPosts();
     await bootFromRoute(false);
   } catch (error) {
     showToast(error.message);

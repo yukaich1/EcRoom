@@ -133,6 +133,7 @@ class SeedSessionTests(unittest.TestCase):
                     "final_content": "这是收藏后的示例输出。",
                     "category": "short",
                     "skills": ["revision_studio"],
+                    "image": "/assets/inspiration/writing.jpg",
                 }
             )
 
@@ -140,7 +141,42 @@ class SeedSessionTests(unittest.TestCase):
             self.assertTrue(any(item["asset_id"] == asset["asset_id"] for item in assets))
             detail = runner.asset_view(asset["asset_id"])
             self.assertEqual(detail["asset"]["prompt"], "请写一段可复用的提示词。")
+            self.assertEqual(detail["asset"]["image"], "/assets/inspiration/writing.jpg")
             self.assertIsNone(detail["manifest"])
+
+    def test_publish_flow_uses_manual_tags_and_media_reference(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            runner = CreativeRoomRunner(Path(tmp), llm=FakeLLM())
+            state = runner.run_seed_session(request="写一段潮汐城市设定，最后发布到主页。")
+            runner.complete_session(state.session_id, True)
+
+            draft = runner.create_publish_draft(state.session_id)
+            self.assertEqual(draft["tags"], [])
+            self.assertEqual(draft["status"], "draft")
+            updated = runner.update_post(
+                draft["post_id"],
+                {
+                    "title": "潮汐城市",
+                    "body": "这座城市由潮汐钟控制。",
+                    "tags": ["世界观", "世界观", " 自定义标签 ", ""],
+                    "cover_data_url": "data:image/png;base64,aGVsbG8=",
+                    "status": "published",
+                },
+            )
+
+            self.assertEqual(updated["tags"], ["世界观", "自定义标签"])
+            self.assertEqual(updated["status"], "published")
+            self.assertTrue(str(updated["cover_url"]).startswith("/media/"))
+            self.assertTrue((Path(tmp) / "published_posts.json").exists())
+            self.assertTrue(list((Path(tmp) / "media").glob("media_*.png")))
+            posts = runner.published_posts_view()["posts"]
+            self.assertTrue(any(item["post_id"] == draft["post_id"] for item in posts))
+            assets = runner.assets_view()["assets"]
+            self.assertTrue(any(item.get("post_id") == draft["post_id"] and item.get("source") == "published" for item in assets))
+            deleted = runner.delete_post(draft["post_id"])
+            self.assertTrue(deleted["deleted"])
+            self.assertFalse(any(item["post_id"] == draft["post_id"] for item in runner.published_posts_view()["posts"]))
+            self.assertFalse(any(item.get("post_id") == draft["post_id"] for item in runner.assets_view()["assets"]))
 
     def test_liked_inspiration_can_later_be_collected(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

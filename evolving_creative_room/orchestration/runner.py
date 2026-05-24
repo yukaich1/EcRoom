@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 from pathlib import Path
+import base64
+import binascii
 import json
 from dataclasses import asdict
 import re
@@ -49,6 +51,9 @@ class CreativeRoomRunner:
         self.skill_runs_path = self.workspace / "observability" / "skill_runs.jsonl"
         self.skill_runs_path.parent.mkdir(parents=True, exist_ok=True)
         self.collected_assets_path = self.workspace / "collected_assets.json"
+        self.published_posts_path = self.workspace / "published_posts.json"
+        self.media_dir = self.workspace / "media"
+        self.media_dir.mkdir(parents=True, exist_ok=True)
         self.evolver = HarnessEvolver()
         self.skill_package_paths = write_skill_packages(self.project_root / "harness" / "skills")
         self.llm_error: str | None = None
@@ -185,7 +190,7 @@ class CreativeRoomRunner:
     def session_view(self, session_id: str) -> dict[str, object]:
         state = self.memory.load_state(session_id)
         canvas_path = self.workspace / "short_term_canvas.mmd"
-        session_meta = next((item for item in self.memory.list_sessions() if item.get("session_id") == session_id), {})
+        session_meta = next((item for item in self.memory.list_sessions(include_completed=True) if item.get("session_id") == session_id), {})
         return {
             "state": state_to_dict(state),
             "session": session_meta,
@@ -293,6 +298,12 @@ class CreativeRoomRunner:
 
     def assets_view(self, project_id: str = "default") -> dict[str, object]:
         assets = self._read_collected_assets(project_id=project_id)
+        for post in self._read_published_posts():
+            if post.get("status") != "published":
+                continue
+            if project_id and post.get("project_id", "default") not in {project_id, "global"}:
+                continue
+            assets.append(_asset_from_post(post))
         for session in self.memory.list_sessions(include_completed=True):
             if not session.get("completed"):
                 continue
@@ -315,6 +326,122 @@ class CreativeRoomRunner:
             return {"asset": asset, "manifest": None}
         session = next((item for item in self.memory.list_sessions(include_completed=True) if item.get("session_id") == asset_id), {})
         return {"asset": _asset_from_state(state, title=str(session.get("title") or "")), "manifest": self.latest_manifest(asset_id)}
+
+    def publish_defaults(self, work_id: str) -> dict[str, object]:
+        asset = self._work_asset(work_id)
+        return {
+            "work_id": work_id,
+            "title": str(asset.get("title") or "未命名作品"),
+            "body": str(asset.get("final_content") or ""),
+            "cover_url": str(asset.get("image") or asset.get("cover_url") or ""),
+            "default_tags": default_publish_tags(),
+        }
+
+    def create_publish_draft(self, work_id: str) -> dict[str, object]:
+        asset = self._work_asset(work_id)
+        posts = self._read_published_posts()
+        existing = next((post for post in posts if post.get("work_id") == work_id and post.get("status") == "draft"), None)
+        if existing:
+            return existing
+        now = utc_now_iso()
+        post = {
+            "post_id": new_id("post"),
+            "work_id": work_id,
+            "session_id": str(asset.get("session_id") or work_id),
+            "project_id": str(asset.get("project_id") or "default"),
+            "title": str(asset.get("title") or "未命名作品"),
+            "body": str(asset.get("final_content") or ""),
+            "tags": [],
+            "cover_media_id": "",
+            "cover_url": str(asset.get("image") or asset.get("cover_url") or ""),
+            "status": "draft",
+            "created_at": now,
+            "updated_at": now,
+            "published_at": "",
+        }
+        posts.insert(0, post)
+        self._write_published_posts(posts)
+        return post
+
+    def delete_post(self, post_id: str) -> dict[str, object]:
+        posts = self._read_published_posts()
+        kept = [post for post in posts if post.get("post_id") != post_id]
+        if len(kept) == len(posts):
+            raise FileNotFoundError(f"Post not found: {post_id}")
+        self._write_published_posts(kept)
+        self.metrics.record("post_deleted", metadata={"post_id": post_id})
+        return {"deleted": True, "post_id": post_id}
+
+    def published_posts_view(self, *, include_drafts: bool = False, project_id: str = "default") -> dict[str, object]:
+        posts = self._read_published_posts()
+        visible = [
+            post
+            for post in posts
+            if (include_drafts or post.get("status") == "published") and post.get("project_id", project_id) in {project_id, "global"}
+        ]
+        return {"posts": visible, "default_tags": default_publish_tags()}
+
+    def post_view(self, post_id: str) -> dict[str, object]:
+        post = next((item for item in self._read_published_posts() if item.get("post_id") == post_id), None)
+        if not post:
+            raise FileNotFoundError(f"Post not found: {post_id}")
+        return {"post": post, "default_tags": default_publish_tags()}
+
+    def update_post(self, post_id: str, payload: dict[str, object]) -> dict[str, object]:
+        posts = self._read_published_posts()
+        post = next((item for item in posts if item.get("post_id") == post_id), None)
+        if not post:
+            raise FileNotFoundError(f"Post not found: {post_id}")
+        status = str(payload.get("status") or post.get("status") or "draft").strip()
+        if status not in {"draft", "published"}:
+            status = "draft"
+        post["title"] = str(payload.get("title", post.get("title", ""))).strip() or "未命名作品"
+        post["body"] = str(payload.get("body", post.get("body", ""))).strip()
+        post["tags"] = normalize_publish_tags(payload.get("tags"))
+        post["status"] = status
+        cover_url = str(payload.get("cover_url", "")).strip()
+        if cover_url:
+            post["cover_url"] = cover_url
+        media_payload = str(payload.get("cover_data_url", "")).strip()
+        if media_payload:
+            media = self.save_media_data_url(media_payload, source="uploaded")
+            post["cover_media_id"] = media["media_id"]
+            post["cover_url"] = media["public_url"]
+        post["updated_at"] = utc_now_iso()
+        if status == "published" and not post.get("published_at"):
+            post["published_at"] = post["updated_at"]
+            self.metrics.record(
+                "post_published",
+                session_id=str(post.get("session_id", "")),
+                metadata={"post_id": post_id, "tag_count": len(post.get("tags", []))},
+            )
+        self._write_published_posts(posts)
+        return post
+
+    def save_media_data_url(self, data_url: str, *, source: str = "uploaded") -> dict[str, object]:
+        match = re.match(r"^data:(image/(png|jpeg|jpg|webp));base64,(.+)$", data_url, flags=re.I | re.S)
+        if not match:
+            raise ValueError("只支持 png、jpg、webp 图片。")
+        mime_type = match.group(1).lower().replace("image/jpg", "image/jpeg")
+        extension = "jpg" if mime_type == "image/jpeg" else mime_type.rsplit("/", 1)[-1]
+        try:
+            content = base64.b64decode(match.group(3), validate=True)
+        except (binascii.Error, ValueError) as exc:
+            raise ValueError("图片数据无法解析。") from exc
+        if len(content) > 4 * 1024 * 1024:
+            raise ValueError("图片不能超过 4MB。")
+        media_id = new_id("media")
+        path = self.media_dir / f"{media_id}.{extension}"
+        path.write_bytes(content)
+        return {
+            "media_id": media_id,
+            "file_path": str(path),
+            "public_url": f"/media/{path.name}",
+            "mime_type": mime_type,
+            "size": len(content),
+            "source": source,
+            "created_at": utc_now_iso(),
+        }
 
     def collect_asset(self, payload: dict[str, object]) -> dict[str, object]:
         asset = self._upsert_inspiration_asset(payload, collected=True, liked=bool(payload.get("liked", False)))
@@ -351,6 +478,7 @@ class CreativeRoomRunner:
                 "final_content": str(payload.get("final_content", "")).strip(),
                 "goal": str(payload.get("goal", "")).strip(),
                 "category": str(payload.get("category", "discover")).strip() or "discover",
+                "image": str(payload.get("image", "")).strip(),
                 "skills": _as_string_list(payload.get("skills")),
                 "platforms": _as_string_list(payload.get("platforms")),
                 "liked": liked,
@@ -575,6 +703,27 @@ class CreativeRoomRunner:
 
     def _write_collected_assets(self, assets: list[dict[str, object]]) -> None:
         self.collected_assets_path.write_text(json.dumps(assets, ensure_ascii=False, indent=2), encoding="utf-8")
+
+    def _work_asset(self, work_id: str) -> dict[str, object]:
+        try:
+            state = self.memory.load_state(work_id)
+        except FileNotFoundError:
+            asset = next((item for item in self._read_collected_assets() if item.get("asset_id") == work_id), None)
+            if not asset:
+                raise
+            return asset
+        session = next((item for item in self.memory.list_sessions(include_completed=True) if item.get("session_id") == work_id), {})
+        return _asset_from_state(state, title=str(session.get("title") or ""))
+
+    def _read_published_posts(self) -> list[dict[str, object]]:
+        if not self.published_posts_path.exists():
+            return []
+        data = json.loads(self.published_posts_path.read_text(encoding="utf-8"))
+        posts = data if isinstance(data, list) else []
+        return sorted(posts, key=lambda item: str(item.get("updated_at") or item.get("published_at") or ""), reverse=True)
+
+    def _write_published_posts(self, posts: list[dict[str, object]]) -> None:
+        self.published_posts_path.write_text(json.dumps(posts, ensure_ascii=False, indent=2), encoding="utf-8")
 
     def _append_feedback(
         self,
@@ -1147,6 +1296,27 @@ def _asset_from_state(state: CreativeState, title: str = "") -> dict[str, object
     }
 
 
+def _asset_from_post(post: dict[str, object]) -> dict[str, object]:
+    return {
+        "asset_id": str(post.get("post_id", "")),
+        "post_id": str(post.get("post_id", "")),
+        "session_id": str(post.get("session_id", "")),
+        "project_id": str(post.get("project_id", "default")),
+        "source": "published",
+        "title": str(post.get("title", "未命名作品")),
+        "prompt": str(post.get("title", "未命名作品")),
+        "final_content": str(post.get("body", "")),
+        "iteration_prompt": f"基于这篇已发布作品继续迭代。\n\n标题：{post.get('title', '')}\n\n当前作品：\n{post.get('body', '')}\n\n新的修改目标：",
+        "goal": "已发布作品",
+        "tags": _as_string_list(post.get("tags")),
+        "platforms": [],
+        "skills": [],
+        "image": str(post.get("cover_url", "")),
+        "cover_url": str(post.get("cover_url", "")),
+        "updated_at": str(post.get("updated_at") or post.get("published_at") or ""),
+    }
+
+
 def _asset_title(prompt: str) -> str:
     text = re.sub(r"\s+", " ", prompt).strip(" ，,。")
     return text[:22] + ("..." if len(text) > 22 else "")
@@ -1165,6 +1335,33 @@ def _iteration_prompt(state: CreativeState, final_content: str) -> str:
         "新的修改目标：",
     ]
     return "\n".join(pieces).strip()
+
+
+def default_publish_tags() -> list[str]:
+    return ["角色", "世界观", "剧情", "社媒", "小红书", "微博", "公众号", "活动", "游戏", "品牌", "改稿", "标题"]
+
+
+def normalize_publish_tags(value: object) -> list[str]:
+    if isinstance(value, str):
+        raw_values = re.split(r"[\s,，、#]+", value)
+    elif isinstance(value, list):
+        raw_values = [str(item) for item in value]
+    else:
+        raw_values = []
+    tags: list[str] = []
+    seen: set[str] = set()
+    for raw in raw_values:
+        tag = re.sub(r"\s+", "", str(raw)).strip("#＃")
+        if not tag or len(tag) > 16:
+            continue
+        key = tag.lower()
+        if key in seen:
+            continue
+        seen.add(key)
+        tags.append(tag)
+        if len(tags) >= 12:
+            break
+    return tags
 
 
 def _clean_title(value: str) -> str:

@@ -22,7 +22,7 @@ class CreativeRoomWebHandler(BaseHTTPRequestHandler):
         parsed = urlparse(self.path)
         path = parsed.path
         query = parse_qs(parsed.query)
-        if path == "/" or path.startswith("/chat/") or path == "/assets" or path.startswith("/asset/") or path == "/profile" or path == "/settings" or path.startswith("/settings/"):
+        if path == "/" or path.startswith("/chat/") or path == "/assets" or path.startswith("/asset/") or path == "/profile" or path == "/publish" or path.startswith("/publish/") or path == "/settings" or path.startswith("/settings/"):
             self._serve_file(STATIC_ROOT / "index.html", "text/html; charset=utf-8")
             return
         if path in {"/app.js", "/styles.css"}:
@@ -31,14 +31,27 @@ class CreativeRoomWebHandler(BaseHTTPRequestHandler):
             return
         if path.startswith("/assets/"):
             suffix = Path(path).suffix.lower()
-            content_type = "image/png" if suffix == ".png" else "application/octet-stream"
+            content_type = "image/png" if suffix == ".png" else "image/jpeg" if suffix in {".jpg", ".jpeg"} else "application/octet-stream"
             self._serve_file(STATIC_ROOT / path.lstrip("/"), content_type)
+            return
+        if path.startswith("/media/"):
+            suffix = Path(path).suffix.lower()
+            content_type = "image/png" if suffix == ".png" else "image/jpeg" if suffix in {".jpg", ".jpeg"} else "image/webp" if suffix == ".webp" else "application/octet-stream"
+            self._serve_file(self.runner.media_dir / Path(path).name, content_type)
             return
         if path == "/api/sessions":
             self._json({"sessions": self.runner.memory.list_sessions()})
             return
         if path == "/api/assets":
             self._json(self.runner.assets_view(project_id=_first(query, "project_id") or "default"))
+            return
+        if path == "/api/posts":
+            include_drafts = (_first(query, "include_drafts") or "").lower() in {"1", "true", "yes"}
+            self._json(self.runner.published_posts_view(include_drafts=include_drafts, project_id=_first(query, "project_id") or "default"))
+            return
+        if path.startswith("/api/post/"):
+            post_id = path.rsplit("/", 1)[-1]
+            self._json(self.runner.post_view(post_id))
             return
         if path.startswith("/api/asset/"):
             asset_id = path.rsplit("/", 1)[-1]
@@ -139,6 +152,17 @@ class CreativeRoomWebHandler(BaseHTTPRequestHandler):
             payload = self._read_json()
             self._json({"asset": self.runner.like_asset(payload)}, HTTPStatus.CREATED)
             return
+        if path == "/api/publish/draft":
+            payload = self._read_json()
+            post = self.runner.create_publish_draft(str(payload.get("work_id", "")).strip())
+            self._json({"post": post, "default_tags": self.runner.published_posts_view()["default_tags"]}, HTTPStatus.CREATED)
+            return
+        if path.startswith("/api/post/"):
+            post_id = path.rsplit("/", 1)[-1]
+            payload = self._read_json()
+            post = self.runner.update_post(post_id, payload)
+            self._json({"post": post, "default_tags": self.runner.published_posts_view()["default_tags"]})
+            return
         if path == "/api/memory/review":
             payload = self._read_json()
             result = self.runner.review_memory(
@@ -232,6 +256,10 @@ class CreativeRoomWebHandler(BaseHTTPRequestHandler):
 
     def do_DELETE(self) -> None:
         path = urlparse(self.path).path
+        if path.startswith("/api/post/"):
+            post_id = path.rsplit("/", 1)[-1]
+            self._json(self.runner.delete_post(post_id))
+            return
         if path.startswith("/api/session/"):
             session_id = path.split("/")[-1]
             payload = self._read_json()

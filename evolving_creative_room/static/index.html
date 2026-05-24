@@ -35,6 +35,25 @@
       <svg class="theme-icon-sun" aria-hidden="true"><use href="#i-sun"></use></svg>
     </button>
 
+    <section class="boot-screen" id="bootScreen" aria-label="EcRoom 正在进入">
+      <div class="boot-card">
+        <div class="cake-loader cake-loader-large" id="bootCake" style="--cake-progress: 0%">
+          <span class="cake-fill" aria-hidden="true"></span>
+          <svg viewBox="0 0 96 96" aria-hidden="true">
+            <path class="cake-candle" d="M32 17v15M48 12v20M64 17v15" />
+            <path class="cake-flame" d="M31 12c4 4 4 8 0 11-4-3-4-7 0-11ZM47 7c5 5 5 10 0 14-5-4-5-9 0-14ZM63 12c4 4 4 8 0 11-4-3-4-7 0-11Z" />
+            <path class="cake-icing" d="M21 40c8-10 14 5 22-3 7-7 12 5 20-1 6-4 10-3 12 4" />
+            <path class="cake-body" d="M17 39h62v36a9 9 0 0 1-9 9H26a9 9 0 0 1-9-9V39Z" />
+            <path class="cake-drip" d="M29 40v12M48 40v18M67 40v10" />
+            <path class="cake-plate" d="M13 84h70" />
+          </svg>
+        </div>
+        <div>
+          <strong>EcRoom</strong>
+        </div>
+      </div>
+    </section>
+
     <div class="app-frame" id="appFrame">
       <aside class="icon-rail" aria-label="工具栏">
         <button class="brand-button" id="brandHomeBtn" type="button" aria-label="回到灵感页"><img src="/assets/ecroom-icon-128.png" alt="EcRoom" /></button>
@@ -80,7 +99,10 @@
               <button class="feed-tab active" type="button" data-category="discover">发现</button>
               <button class="feed-tab" type="button" data-category="short">短文</button>
               <button class="feed-tab" type="button" data-category="campaign">活动</button>
+              <button class="feed-tab" type="button" data-category="role">角色</button>
+              <button class="feed-tab" type="button" data-category="world">世界观</button>
               <label class="feed-search"><svg aria-hidden="true"><use href="#i-search"></use></svg><input id="feedSearch" placeholder="" /></label>
+              <button class="feed-refresh-button" id="refreshFeedBtn" type="button">换一批</button>
             </div>
             <div id="inspirationGrid" class="inspiration-grid"></div>
           </section>
@@ -169,19 +191,65 @@
           </div>
         </section>
 
+        <section class="publish-screen screen" id="publishScreen" aria-label="发布作品">
+          <header class="publish-header">
+            <button class="ghost-button" id="publishBackBtn" type="button">返回创作</button>
+            <div>
+              <p>Publish</p>
+              <h1>整理成作品</h1>
+              <span>发布前可以继续修改正文、选择规范标签，并添加一张封面图。</span>
+            </div>
+          </header>
+          <div class="publish-layout">
+            <section class="publish-editor">
+              <label>标题<input id="publishTitle" placeholder="给这篇作品起个标题" /></label>
+              <label>正文<textarea id="publishBody" rows="14" placeholder="最终版本会放在这里，你可以继续调整。"></textarea></label>
+              <div class="publish-tags-block">
+                <div class="publish-field-head"><strong>标签</strong><span>从规范标签池选择，或手动输入后回车。</span></div>
+                <div id="publishTagChoices" class="publish-tag-choices"></div>
+                <label class="tag-input-wrap"><input id="publishTagInput" placeholder="输入自定义标签" /></label>
+                <div id="publishTagList" class="publish-tag-list"></div>
+              </div>
+              <div class="publish-cover-block">
+                <div class="publish-field-head"><strong>封面图</strong><span>支持 png、jpg、webp，保存为本地媒体引用。</span></div>
+                <button class="cover-picker" id="publishCoverBtn" type="button">
+                  <img id="publishCoverImage" alt="作品封面预览" />
+                  <span id="publishCoverPlaceholder">添加封面</span>
+                </button>
+                <input id="publishCoverInput" class="sr-only" type="file" accept="image/png,image/jpeg,image/webp" />
+              </div>
+              <div class="publish-actions">
+                <button class="danger-button" id="publishDeleteBtn" type="button">删除作品</button>
+                <button class="ghost-button" id="publishSaveDraftBtn" type="button">保存草稿</button>
+                <button class="primary-button" id="publishSubmitBtn" type="button">发布到主页</button>
+              </div>
+            </section>
+            <aside class="publish-preview">
+              <div class="publish-preview-card">
+                <div class="publish-preview-cover"><img id="publishPreviewCover" alt="发布预览封面" /></div>
+                <div class="publish-preview-copy">
+                  <h2 id="publishPreviewTitle">未命名作品</h2>
+                  <p id="publishPreviewBody">正文预览会显示在这里。</p>
+                  <div id="publishPreviewTags" class="publish-preview-tags"></div>
+                </div>
+              </div>
+            </aside>
+          </div>
+        </section>
+
         <section class="profile-screen screen" id="profileScreen" aria-label="个人主页">
           <button class="icon-button profile-share-icon" id="profileShareBtn" type="button" aria-label="分享主页"><svg aria-hidden="true"><use href="#i-share"></use></svg></button>
           <div class="profile-layout">
             <aside class="profile-card">
-              <button class="profile-avatar" id="profileAvatarBtn" type="button" aria-label="更换头像">
+              <button class="icon-button profile-edit-button" id="profileEditBtn" type="button" aria-label="编辑个人资料"><svg aria-hidden="true"><use href="#i-pen"></use></svg></button>
+              <div class="profile-avatar profile-avatar-display" id="profileAvatarDisplay" aria-label="用户头像">
                 <img id="profileAvatarImage" alt="用户头像" />
                 <svg aria-hidden="true"><use href="#i-star"></use></svg>
-              </button>
+              </div>
               <input id="avatarFileInput" class="sr-only" type="file" accept="image/*" />
-              <input id="profilePageNickname" class="profile-name-input" aria-label="昵称" />
+              <h2 id="profilePageNickname" class="profile-name-display">创作者</h2>
               <div class="profile-stats"><span id="profileWorksCount">0 作品</span><span id="profileLikesCount">0 喜欢</span><span id="profileCollectsCount">0 收藏</span></div>
-              <textarea id="profilePageBio" class="profile-bio-input" rows="4" placeholder="添加个人简介"></textarea>
-              <button class="primary-button" id="profilePageSaveBtn" type="button">保存资料</button>
+              <p id="profilePageBio" class="profile-bio-display">添加个人简介</p>
             </aside>
             <section class="profile-content">
               <div class="profile-tabs">
@@ -275,6 +343,33 @@
       </div>
     </section>
     <section class="modal" id="applyEvolutionModal" aria-hidden="true"><div class="modal-card"><h2>应用这条改进？</h2><p>它会写入本地工作规则，并留下审阅记录。</p><textarea id="applyEvolutionNote" rows="3" placeholder="审批说明，可留空"></textarea><div class="modal-actions"><button class="ghost-button" id="cancelApplyEvolutionBtn" type="button">取消</button><button class="primary-button" id="confirmApplyEvolutionBtn" type="button">应用</button></div></div></section>
+    <section class="modal" id="publishPromptModal" aria-hidden="true">
+      <div class="modal-card publish-prompt-card">
+        <h2>这版作品已经保存</h2>
+        <p>可以发布到个人主页，也可以先留在作品库里，之后再继续打磨。</p>
+        <div class="modal-actions stacked-actions">
+          <button class="primary-button" id="goPublishBtn" type="button">发布作品</button>
+          <button class="ghost-button" id="saveWorkOnlyBtn" type="button">只保存作品</button>
+          <button class="ghost-button" id="continueWorkBtn" type="button">继续修改</button>
+        </div>
+      </div>
+    </section>
+    <section class="modal profile-edit-modal" id="profileEditModal" aria-hidden="true">
+      <div class="modal-card profile-edit-card">
+        <div class="modal-head">
+          <h2>编辑个人资料</h2>
+          <button class="icon-button" id="cancelProfileEditBtn" type="button" aria-label="关闭"><svg aria-hidden="true"><use href="#i-close"></use></svg></button>
+        </div>
+        <button class="profile-avatar profile-avatar-edit" id="profileAvatarBtn" type="button" aria-label="更换头像">
+          <img id="profileEditAvatarImage" alt="用户头像预览" />
+          <svg aria-hidden="true"><use href="#i-star"></use></svg>
+          <span>更换头像</span>
+        </button>
+        <label>昵称<input id="profileEditNickname" placeholder="创作者" /></label>
+        <label>简介<textarea id="profileEditBio" rows="4" placeholder="写一句介绍自己的话"></textarea></label>
+        <div class="modal-actions"><button class="ghost-button" id="cancelProfileEditTextBtn" type="button">取消</button><button class="primary-button" id="profilePageSaveBtn" type="button">保存资料</button></div>
+      </div>
+    </section>
     <section class="modal avatar-modal" id="avatarModal" aria-hidden="true">
       <div class="avatar-editor">
         <div class="modal-head"><h2>调整头像</h2><button class="icon-button" id="cancelAvatarBtn" type="button" aria-label="关闭"><svg aria-hidden="true"><use href="#i-close"></use></svg></button></div>
@@ -287,6 +382,7 @@
       <div class="preview-card">
         <button class="icon-button preview-close" id="closePreviewBtn" type="button" aria-label="关闭"><svg aria-hidden="true"><use href="#i-close"></use></svg></button>
         <article class="preview-main">
+          <img id="previewImage" class="preview-image" src="" alt="" />
           <div id="previewType" class="asset-work-type">灵感</div>
           <h2 id="previewTitle">灵感详情</h2>
           <div class="preview-section"><h3>完整提示词</h3><p id="previewPrompt"></p></div>

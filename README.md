@@ -81,7 +81,13 @@ http://127.0.0.1:8765
 
 ## 模型配置
 
-项目默认可以使用本地 stub，不填写 Key 也能体验完整产品流程。需要接入真实模型时，在项目根目录创建 `.env`：
+项目默认可以使用本地 stub，不填写 Key 也能体验完整产品流程。需要接入真实模型时，先复制配置模板：
+
+```powershell
+Copy-Item .env.example .env
+```
+
+然后在 `.env` 里填写对应模型的 Key：
 
 ```text
 ECR_LLM_PROVIDER=mistral

@@ -10,21 +10,28 @@ secrets.*
 user_settings.json
 
 # EcRoom local runtime data
-.ecr_workspace/
-collected_assets.json
-session_meta.json
-learning/
-memory_records.jsonl
-knowledge_records.jsonl
-call_logs.jsonl
-metrics.jsonl
-evaluations/
-evolution/
-evolution_applied/
+/.ecr_workspace/
+/collected_assets.json
+/published_posts.json
+/session_meta.json
+/learning/
+/memory/
+/refs/
+/vector/
+/media/
+/observability/
+/projects.json
+/knowledge_records.jsonl
+/call_logs.jsonl
+/metrics.jsonl
+/evaluations/
+/evolution/
+/evolution_applied/
+/short_term_canvas.mmd
 
 # Vector stores and local databases
-chroma/
-chromadb/
+/chroma/
+/chromadb/
 *.sqlite
 *.sqlite3
 *.db

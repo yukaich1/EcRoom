@@ -20,3 +20,12 @@ ecr-web = "evolving_creative_room.web:main"
 
 [tool.setuptools.packages.find]
 include = ["evolving_creative_room*"]
+
+[tool.setuptools.package-data]
+evolving_creative_room = [
+    "static/*.html",
+    "static/*.css",
+    "static/*.js",
+    "static/assets/*.png",
+    "static/assets/inspiration/*.jpg",
+]

@@ -157,6 +157,20 @@ class AgentEvent:
 
 
 @dataclass(slots=True)
+class FailureSignal:
+    failure_type: str
+    evidence_text: str
+    session_id: str = ""
+    draft_version_id: str = ""
+    skill_id: str = ""
+    agent_role: str = ""
+    component: str = ""
+    severity: str = "medium"
+    signal_id: str = field(default_factory=lambda: new_id("fail"))
+    created_at: str = field(default_factory=utc_now_iso)
+
+
+@dataclass(slots=True)
 class CreativeState:
     intent: CreativeIntent
     project_id: str = "default"
@@ -169,6 +183,7 @@ class CreativeState:
     strategy: list[str] = field(default_factory=list)
     warnings: list[str] = field(default_factory=list)
     agent_events: list[AgentEvent] = field(default_factory=list)
+    failure_signals: list[FailureSignal] = field(default_factory=list)
 
     def add_message(self, role: AgentRole, content: str, **metadata: Any) -> AgentMessage:
         message = AgentMessage(role=role, content=content, metadata=metadata)
@@ -233,6 +248,34 @@ class CreativeState:
         )
         self.agent_events.append(event)
         return event
+
+    def add_failure_signal(
+        self,
+        failure_type: str,
+        evidence_text: str,
+        *,
+        draft_version_id: str = "",
+        skill_id: str = "",
+        agent_role: str = "",
+        component: str = "",
+        severity: str = "medium",
+    ) -> FailureSignal:
+        normalized = " ".join(str(evidence_text).split())
+        for signal in self.failure_signals:
+            if signal.failure_type == failure_type and " ".join(signal.evidence_text.split()) == normalized:
+                return signal
+        item = FailureSignal(
+            failure_type=failure_type,
+            evidence_text=evidence_text,
+            session_id=self.session_id,
+            draft_version_id=draft_version_id,
+            skill_id=skill_id,
+            agent_role=agent_role,
+            component=component,
+            severity=severity,
+        )
+        self.failure_signals.append(item)
+        return item
 
 
 def state_to_dict(state: CreativeState) -> dict[str, Any]:
@@ -321,6 +364,21 @@ def state_to_dict(state: CreativeState) -> dict[str, Any]:
             }
             for item in state.agent_events
         ],
+        "failure_signals": [
+            {
+                "signal_id": item.signal_id,
+                "session_id": item.session_id,
+                "draft_version_id": item.draft_version_id,
+                "skill_id": item.skill_id,
+                "agent_role": item.agent_role,
+                "component": item.component,
+                "failure_type": item.failure_type,
+                "evidence_text": item.evidence_text,
+                "severity": item.severity,
+                "created_at": item.created_at,
+            }
+            for item in state.failure_signals
+        ],
     }
 
 
@@ -396,5 +454,20 @@ def state_from_dict(data: dict[str, Any]) -> CreativeState:
             created_at=str(item.get("created_at") or utc_now_iso()),
         )
         for item in data.get("agent_events", [])
+    ]
+    state.failure_signals = [
+        FailureSignal(
+            signal_id=str(item.get("signal_id") or new_id("fail")),
+            session_id=str(item.get("session_id") or state.session_id),
+            draft_version_id=str(item.get("draft_version_id", "")),
+            skill_id=str(item.get("skill_id", "")),
+            agent_role=str(item.get("agent_role", "")),
+            component=str(item.get("component", "")),
+            failure_type=str(item.get("failure_type", "")),
+            evidence_text=str(item.get("evidence_text", "")),
+            severity=str(item.get("severity", "medium")),
+            created_at=str(item.get("created_at") or utc_now_iso()),
+        )
+        for item in data.get("failure_signals", [])
     ]
     return state

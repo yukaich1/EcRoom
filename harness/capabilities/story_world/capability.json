@@ -1,0 +1,70 @@
+{
+  "capability_id": "story_world",
+  "user_visible_label": "写故事/设定",
+  "short_description": "处理角色、世界观、剧情、场景和台词等通用叙事创作。",
+  "workflow_hint": "先区分 canon、临时设定和可发挥空间，再生成可扩展文本。",
+  "trigger": "用户要求角色设定、世界观、剧情、故事片段、台词、短剧或虚构项目资料。",
+  "version": "1.0.0",
+  "package_kind": "narrative",
+  "agent_sequence": [
+    "intent_interpreter",
+    "researcher",
+    "strategist",
+    "draft_writer",
+    "critic_panel",
+    "norm_steward"
+  ],
+  "pipeline": [
+    "intake",
+    "interpretation",
+    "canon_check",
+    "planning",
+    "production",
+    "quality_gate",
+    "feedback_bridge",
+    "telemetry"
+  ],
+  "tool_contract": [
+    "knowledge.search(project,canon)",
+    "memory.search(project,style)",
+    "continuity.review"
+  ],
+  "input_contract": [
+    "raw_request",
+    "characters",
+    "world_rules",
+    "narrative_goal",
+    "must_keep"
+  ],
+  "output_contract": [
+    "story_or_setting_draft",
+    "canon_notes",
+    "continuation_hooks",
+    "edit_handles"
+  ],
+  "constraints": [
+    "参考作品只抽象节奏和风格，不复刻桥段。",
+    "canon 只在明确作用域内生效。"
+  ],
+  "quality_gates": [
+    "canon_consistency",
+    "character_motivation",
+    "conflict_clarity",
+    "naturalness"
+  ],
+  "entry_examples": [
+    "写一个城市设定和三个可继续扩展的剧情钩子。"
+  ],
+  "failure_policy": [
+    "设定冲突时先保守生成，并记录 continuity_risk。"
+  ],
+  "tags": [
+    "story",
+    "worldbuilding",
+    "character"
+  ],
+  "schema_version": "capability_spec.v1",
+  "component": "capabilities/story_world",
+  "owner": "capability_registry",
+  "rollback_target": "1.0.0"
+}

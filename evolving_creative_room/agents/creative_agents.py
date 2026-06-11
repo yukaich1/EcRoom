@@ -5,6 +5,7 @@ import re
 from evolving_creative_room.agents.base import AgentResult
 from evolving_creative_room.llm import ChatMessage, LLMClient, LLMError
 from evolving_creative_room.models import AgentRole, CreativeState
+from evolving_creative_room.naturalness import evaluate_naturalness
 
 
 class IntentInterpreter:
@@ -114,12 +115,20 @@ class EditorAgent:
         if self.llm:
             result = _try_llm_edit(self.llm, state, last.content)
             if result:
+                cleaned = _extract_final_copy(result)
                 version = state.add_draft(
-                    result,
+                    cleaned,
                     self.role,
                     rationale=f"LLM edit from {self.llm.provider}/{self.llm.model}.",
                     parent_version_id=last.version_id,
                 )
+                if cleaned != result:
+                    state.add_comment(
+                        self.role,
+                        version.version_id,
+                        "已将编辑过程说明从正文中移出，只保留可继续打磨的正文。",
+                        severity="quality",
+                    )
                 state.add_message(
                     self.role,
                     f"Edited draft {last.version_id} into {version.version_id} with LLM.",
@@ -127,17 +136,18 @@ class EditorAgent:
                     llm_model=self.llm.model,
                 )
                 return AgentResult(self.role, f"LLM edited draft {version.version_id}.")
-        edited = (
-            last.content
-            + "\n\n"
-            "编辑建议：下一轮应让用户选择更偏“自然聊天”“正式发布”还是“角色沉浸”。"
-            "这三个方向会触发不同的改写策略。"
-        )
+        edited = _local_edit(last.content, state)
         version = state.add_draft(
             edited,
             self.role,
-            rationale="Added direction-aware revision note.",
+            rationale="Local process-note cleanup and conservative revision.",
             parent_version_id=last.version_id,
+        )
+        state.add_comment(
+            self.role,
+            version.version_id,
+            "本轮只做保守返修：移出过程说明，保留原始意图和可继续修改的正文。",
+            severity="quality",
         )
         state.add_message(self.role, f"Edited draft {last.version_id} into {version.version_id}.")
         return AgentResult(self.role, f"Edited draft {version.version_id}.")
@@ -158,6 +168,7 @@ class CriticPanel:
             if comments:
                 for comment in comments:
                     state.add_comment(self.role, draft.version_id, comment)
+                _add_naturalness_comment(state, draft.version_id, draft.content)
                 state.add_message(
                     self.role,
                     f"Added {len(comments)} LLM critique comments for {draft.version_id}.",
@@ -173,6 +184,7 @@ class CriticPanel:
                 draft.version_id,
                 f"按“{criterion}”检查：当前版本还需要用户反馈来确定取舍。",
             )
+        _add_naturalness_comment(state, draft.version_id, draft.content)
         state.add_message(self.role, f"Critiqued {draft.version_id} with {len(criteria)} criteria.")
         return AgentResult(self.role, "Critique comments added.")
 
@@ -277,6 +289,79 @@ def _append_unique(items: list[str], item: str) -> None:
         items.append(item)
 
 
+def _extract_final_copy(text: str) -> str:
+    value = text.strip()
+    if not value:
+        return value
+    lines = [line.rstrip() for line in value.splitlines()]
+    section_starts = []
+    stop_terms = ("变更说明", "修改说明", "待讨论方向", "请确认", "具体调整如下", "说明：")
+    copy_terms = ("编辑版", "修订版", "正文", "最终稿")
+    for index, line in enumerate(lines):
+        stripped = line.strip(" *#：:")
+        if any(term in stripped for term in copy_terms):
+            section_starts.append(index + 1)
+    for start in section_starts:
+        collected = []
+        for line in lines[start:]:
+            stripped = line.strip()
+            header = stripped.strip(" *#：:")
+            if any(term in header for term in stop_terms):
+                break
+            if stripped in {"---", "```"}:
+                continue
+            collected.append(line)
+        candidate = "\n".join(collected).strip().strip("\"“”")
+        if len(candidate) >= 8:
+            return candidate
+
+    kept = []
+    skip = False
+    for line in lines:
+        stripped = line.strip()
+        header = stripped.strip(" *#：:")
+        if any(term in header for term in stop_terms):
+            skip = True
+            continue
+        if skip:
+            continue
+        if stripped.startswith("以下是") or stripped in {"---", "```"}:
+            continue
+        kept.append(line)
+    candidate = "\n".join(kept).strip().strip("\"“”")
+    return candidate or value
+
+
+def _local_edit(text: str, state: CreativeState) -> str:
+    cleaned = _extract_final_copy(text)
+    cleaned = re.sub(r"创作方向：.*?(?:\n\n|$)", "", cleaned, flags=re.S).strip()
+    cleaned = re.sub(r"初稿：\s*", "", cleaned).strip()
+    cleaned = re.sub(r"如果这是.*", "", cleaned).strip()
+    if len(cleaned) >= 20:
+        return cleaned
+    return _seed_opening(state.intent.raw_request)
+
+
+def _add_naturalness_comment(state: CreativeState, draft_id: str, draft: str) -> None:
+    profile = evaluate_naturalness(
+        draft,
+        request=state.intent.raw_request,
+        feedback=[item.note for item in state.human_feedback if item.note],
+        platforms=_detect_platforms(state.intent.raw_request),
+    )
+    state.add_comment(
+        AgentRole.CRITIC,
+        draft_id,
+        f"自然度诊断：{profile.score:.2f}。{'；'.join(profile.notes)}",
+        severity="quality",
+    )
+
+
+def _detect_platforms(text: str) -> list[str]:
+    platforms = ["微博", "小红书", "公众号", "B站", "抖音"]
+    return [platform for platform in platforms if platform in text]
+
+
 def _seed_opening(request: str) -> str:
     if any(word in request for word in ["角色", "剧情", "世界观"]):
         return "他第一次出现时，世界并没有为他让路，但所有人都意识到，旧秩序开始松动了。"
@@ -289,7 +374,7 @@ def _seed_opening(request: str) -> str:
 
 def _system_prompt() -> str:
     return (
-        "你在 Evolving Creative Room 中工作。用户是创意总监和共同作者。"
+        "你在 EcRoom 中工作。用户是创意总监和共同作者。"
         "你要先尊重 Creative Intent，再生成可讨论、可修改的内容。"
         "输出用中文，避免空泛套话。"
     )

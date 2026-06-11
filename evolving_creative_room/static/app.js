@@ -2,7 +2,7 @@ let currentSessionId = null;
 let selectedSkill = null;
 let pendingRenameId = "";
 let pendingDeleteId = "";
-let pendingEvolutionProposalId = "";
+let pendingReviewItemId = "";
 let sessionsCache = [];
 let assetsCache = [];
 let postsCache = [];
@@ -13,6 +13,7 @@ let publishTags = [];
 let publishDefaultTags = [];
 let publishCoverDataUrl = "";
 let currentPreviewItem = null;
+let currentPreviewMode = "inspiration";
 let activeFeedCategory = "discover";
 let inspirationRotation = 0;
 let inspirationWheelLock = 0;
@@ -21,12 +22,11 @@ let inspirationBatchIndex = 0;
 let inspirationRenderedKey = "";
 let activeProfileTab = "published";
 let activeAssetFilter = "all";
-let activeSettingsSection = "model";
+let activeSettingsSection = "general";
 let currentScreenName = "inspiration";
 let pendingTypingTimer = null;
-let learningCollapsed = true;
-let learningCandidatesCache = [];
-let learningSessionCompleted = false;
+let sessionReviewQueue = [];
+let sessionReviewIndex = 0;
 let avatarState = { image: null, offsetX: 0, offsetY: 0, scale: 1, minScale: 1, dragging: false, lastX: 0, lastY: 0 };
 let previousAssetScreen = "assets";
 let previousPublishScreen = "chat";
@@ -100,29 +100,34 @@ const els = {
   chatTitleEditBtn: document.querySelector("#chatTitleEditBtn"),
   themeToggleBtn: document.querySelector("#themeToggleBtn"),
   messageList: document.querySelector("#messageList"),
-  learningPanel: document.querySelector("#learningPanel"),
-  learningToggleBtn: document.querySelector("#learningToggleBtn"),
-  learningSummary: document.querySelector("#learningSummary"),
-  learningToggleText: document.querySelector("#learningToggleText"),
-  learningList: document.querySelector("#learningList"),
   feedbackForm: document.querySelector("#feedbackForm"),
   feedbackNote: document.querySelector("#feedbackNote"),
   settingsBtn: document.querySelector("#settingsBtn"),
+  settingsModal: document.querySelector("#settingsModal"),
+  closeSettingsBtn: document.querySelector("#closeSettingsBtn"),
   profileBtn: document.querySelector("#profileBtn"),
   settingsForm: document.querySelector("#settingsForm"),
   memoryPolicyForm: document.querySelector("#memoryPolicyForm"),
+  harnessSettingsForm: document.querySelector("#harnessSettingsForm"),
   settingsNavItems: document.querySelectorAll(".settings-nav-item"),
   settingsPanels: document.querySelectorAll(".settings-panel"),
   llmProvider: document.querySelector("#llmProvider"),
   llmModel: document.querySelector("#llmModel"),
   llmBaseUrl: document.querySelector("#llmBaseUrl"),
   llmApiKey: document.querySelector("#llmApiKey"),
+  modelRuntimeStatus: document.querySelector("#modelRuntimeStatus"),
   testLlmBtn: document.querySelector("#testLlmBtn"),
   preferenceList: document.querySelector("#preferenceList"),
   refreshPreferencesBtn: document.querySelector("#refreshPreferencesBtn"),
   memoryCandidateLimit: document.querySelector("#memoryCandidateLimit"),
   memoryMinConfidence: document.querySelector("#memoryMinConfidence"),
   memoryCompleteOnly: document.querySelector("#memoryCompleteOnly"),
+  dataDoctorStatus: document.querySelector("#dataDoctorStatus"),
+  runDataDoctorBtn: document.querySelector("#runDataDoctorBtn"),
+  rebuildIndexBtn: document.querySelector("#rebuildIndexBtn"),
+  harnessAutoPropose: document.querySelector("#harnessAutoPropose"),
+  harnessRecordSkillRuns: document.querySelector("#harnessRecordSkillRuns"),
+  harnessMinEvalCases: document.querySelector("#harnessMinEvalCases"),
   profilePageNickname: document.querySelector("#profilePageNickname"),
   profilePageBio: document.querySelector("#profilePageBio"),
   profileAvatarDisplay: document.querySelector("#profileAvatarDisplay"),
@@ -144,6 +149,15 @@ const els = {
   profileTabs: document.querySelectorAll(".profile-tab"),
   profileGrid: document.querySelector("#profileGrid"),
   evolutionList: document.querySelector("#evolutionList"),
+  evolutionReviewBtn: document.querySelector("#evolutionReviewBtn"),
+  evolutionReviewCount: document.querySelector("#evolutionReviewCount"),
+  evolutionReviewCounter: document.querySelector("#evolutionReviewCounter"),
+  evolutionReviewTitle: document.querySelector("#evolutionReviewTitle"),
+  evolutionReviewBody: document.querySelector("#evolutionReviewBody"),
+  evolutionReviewScope: document.querySelector("#evolutionReviewScope"),
+  evolutionReviewImpact: document.querySelector("#evolutionReviewImpact"),
+  evolutionReviewTech: document.querySelector("#evolutionReviewTech"),
+  ignoreEvolutionBtn: document.querySelector("#ignoreEvolutionBtn"),
   renameModal: document.querySelector("#renameModal"),
   renameInput: document.querySelector("#renameInput"),
   cancelRenameBtn: document.querySelector("#cancelRenameBtn"),
@@ -152,13 +166,16 @@ const els = {
   cancelDeleteBtn: document.querySelector("#cancelDeleteBtn"),
   confirmDeleteBtn: document.querySelector("#confirmDeleteBtn"),
   applyEvolutionModal: document.querySelector("#applyEvolutionModal"),
-  applyEvolutionNote: document.querySelector("#applyEvolutionNote"),
   cancelApplyEvolutionBtn: document.querySelector("#cancelApplyEvolutionBtn"),
   confirmApplyEvolutionBtn: document.querySelector("#confirmApplyEvolutionBtn"),
   publishPromptModal: document.querySelector("#publishPromptModal"),
   goPublishBtn: document.querySelector("#goPublishBtn"),
   saveWorkOnlyBtn: document.querySelector("#saveWorkOnlyBtn"),
   continueWorkBtn: document.querySelector("#continueWorkBtn"),
+  reopenWorkModal: document.querySelector("#reopenWorkModal"),
+  reopenAndClearLearningBtn: document.querySelector("#reopenAndClearLearningBtn"),
+  reopenKeepLearningBtn: document.querySelector("#reopenKeepLearningBtn"),
+  cancelReopenWorkBtn: document.querySelector("#cancelReopenWorkBtn"),
   avatarModal: document.querySelector("#avatarModal"),
   avatarCanvas: document.querySelector("#avatarCanvas"),
   avatarZoom: document.querySelector("#avatarZoom"),
@@ -170,7 +187,10 @@ const els = {
   previewType: document.querySelector("#previewType"),
   previewImage: document.querySelector("#previewImage"),
   previewTitle: document.querySelector("#previewTitle"),
+  previewPromptSection: document.querySelector("#previewPromptSection"),
+  previewPromptLabel: document.querySelector("#previewPromptLabel"),
   previewPrompt: document.querySelector("#previewPrompt"),
+  previewOutputLabel: document.querySelector("#previewOutputLabel"),
   previewOutput: document.querySelector("#previewOutput"),
   previewMeta: document.querySelector("#previewMeta"),
   likePreviewBtn: document.querySelector("#likePreviewBtn"),
@@ -299,9 +319,8 @@ function toggleTheme() {
   showToast(next === "light" ? "已切换到白天" : "已切换到黑夜");
 }
 
-function setBusy(isBusy, text = "生成中") {
+function setBusy(isBusy) {
   document.body.classList.toggle("is-busy", isBusy);
-  if (isBusy) showToast(text);
 }
 
 function showScreen(name, push = true) {
@@ -325,6 +344,7 @@ function showScreen(name, push = true) {
   els.settingsBtn.classList.toggle("active", name === "settings");
   const historyVisible = name === "generate" || name === "chat";
   els.appFrame.classList.toggle("history-hidden", !historyVisible);
+  updateSessionReviewButton();
   if (push) {
     const path = name === "generate" ? "/#generate" : name === "assets" ? "/assets" : name === "profile" ? "/profile" : name === "settings" ? `/settings/${activeSettingsSection}` : name === "publish" && currentPublishPost ? `/publish/${currentPublishPost.post_id}` : "/";
     history.pushState({}, "", path);
@@ -347,7 +367,7 @@ function pulseElement(element, className = "motion-pulse", duration = 520) {
 }
 
 async function openSession(sessionId, push = true) {
-  setBusy(true, "载入对话");
+  setBusy(true);
   try {
     const data = await api(`/api/session/${sessionId}`);
     currentSessionId = sessionId;
@@ -376,20 +396,27 @@ async function openProfile(push = true) {
 
 async function openSettings(section = activeSettingsSection, push = true) {
   await loadSettings();
-  setSettingsSection(section || "model", false);
-  showScreen("settings", false);
+  setSettingsSection(section || "general", false);
+  els.settingsModal.classList.add("open");
+  els.settingsModal.setAttribute("aria-hidden", "false");
   if (push) history.pushState({}, "", `/settings/${activeSettingsSection}`);
 }
 
+function closeSettingsModal() {
+  els.settingsModal.classList.remove("open");
+  els.settingsModal.setAttribute("aria-hidden", "true");
+  if (location.pathname.startsWith("/settings")) history.pushState({}, "", currentSessionId ? `/chat/${currentSessionId}` : "/");
+}
+
 async function openAsset(assetId, push = true) {
-  setBusy(true, "载入资产");
+  setBusy(true);
   try {
     previousAssetScreen = currentScreenName === "assetDetail" ? previousAssetScreen : currentScreenName;
     const data = await api(`/api/asset/${assetId}`);
     currentAsset = data.asset || null;
     currentManifest = data.manifest || null;
     renderAssetDetail(currentAsset);
-    renderEvolution(currentManifest);
+    renderSessionReview([]);
     showScreen("assetDetail", false);
     if (push) history.pushState({ assetId }, "", `/asset/${assetId}`);
   } finally {
@@ -411,9 +438,8 @@ async function renderChat(data, options = {}) {
   const state = data.state || {};
   const session = data.session || {};
   currentManifest = data.manifest || null;
-  renderEvolution(currentManifest);
   const isCompleted = Boolean(session.completed);
-  renderLearning(isCompleted ? data.learning?.candidates || [] : [], { completed: isCompleted });
+  renderSessionReview(isCompleted ? data.review?.items || [] : []);
   els.chatTitle.textContent = session.title || sessionTitle(state.session_id, state.intent?.raw_request || "新的创作");
   els.chatUpdatedAt.textContent = formatSessionTime(session.updated_at);
   els.messageList.innerHTML = "";
@@ -431,74 +457,25 @@ async function renderChat(data, options = {}) {
   els.messageList.scrollTop = els.messageList.scrollHeight;
 }
 
-function renderLearning(candidates = [], options = {}) {
-  if (!els.learningPanel || !els.learningList) return;
-  learningCandidatesCache = candidates;
-  learningSessionCompleted = Boolean(options.completed ?? learningSessionCompleted);
-  const visible = candidates.filter((item) => item.status === "candidate");
-  if (!visible.length) {
-    els.learningPanel.hidden = true;
-    els.learningList.innerHTML = "";
-    return;
-  }
-  els.learningPanel.hidden = false;
-  els.learningPanel.classList.toggle("collapsed", learningCollapsed);
-  els.learningSummary.textContent = learningSessionCompleted ? `${visible.length} 条偏好待确认` : `${visible.length} 条偏好待确认`;
-  els.learningToggleText.textContent = learningCollapsed ? "展开" : "收起";
-  els.learningList.innerHTML = "";
-  for (const candidate of visible.slice(0, 5)) {
-    const card = document.createElement("article");
-    card.className = "learning-card";
-    card.innerHTML = `
-      <div class="learning-copy">
-        <span>${escapeHtml(learningKindLabel(candidate.kind))}</span>
-        <strong>${escapeHtml(normalizeCreativeText(candidate.content || ""))}</strong>
-        <small>${escapeHtml(candidate.effect || candidate.reason || "")}</small>
-      </div>
-      <div class="learning-actions">
-        <button type="button" data-learning-id="${escapeHtml(candidate.candidate_id)}" data-learning-action="preference">设为偏好</button>
-        <button type="button" data-learning-id="${escapeHtml(candidate.candidate_id)}" data-learning-action="cancel">取消</button>
-      </div>`;
-    els.learningList.appendChild(card);
-  }
-}
-
-function learningKindLabel(kind) {
+function scopeLabel(scope) {
   const labels = {
-    preference: "偏好",
-    project_rule: "项目规则",
-    platform_rule: "平台规则",
+    session: "仅当前会话",
+    project: "项目内生效",
+    global: "长期偏好",
+    platform: "对应平台任务",
   };
-  return labels[kind] || "学习项";
+  return labels[scope] || "待确认作用域";
 }
 
-function learningStatusLabel(status) {
-  const labels = {
-    global_active: "已设为偏好",
-    ignored: "已取消",
-  };
-  return labels[status] || "已处理";
+function formatScore(value) {
+  const number = Number(value);
+  if (!Number.isFinite(number)) return "-";
+  return `${Math.round(number * 100)}%`;
 }
 
-async function applyLearningItem(candidateId, action) {
-  if (!candidateId || !action) return;
-  await api(`/api/learning/${candidateId}`, { method: "POST", body: JSON.stringify({ action }) });
-  showToast(action === "preference" || action === "global" ? "已保存到偏好" : "已取消");
-  if (currentSessionId) {
-    const data = await api(`/api/session/${currentSessionId}`);
-    await renderChat(data);
-  }
-  if (action === "preference" || action === "global") await loadPreferences();
-}
-
-function toggleLearningPanel() {
-  learningCollapsed = !learningCollapsed;
-  renderLearning(learningCandidatesCache, { completed: learningSessionCompleted });
-}
-
-async function getWorkflowPreview(request, preferences = "") {
+async function getWorkflowPreview(request, preferences = "", capabilityId = "") {
   try {
-    return await api("/api/workflow/preview", { method: "POST", body: JSON.stringify({ request, preferences, project_id: "default" }) });
+    return await api("/api/workflow/preview", { method: "POST", body: JSON.stringify({ request, preferences, capability_id: capabilityId, project_id: "default" }) });
   } catch (error) {
     return { stages: defaultWorkflowStages(request) };
   }
@@ -508,15 +485,15 @@ function defaultWorkflowStages(request = "") {
   const platforms = [];
   if (request.includes("微博")) platforms.push("微博");
   if (request.includes("小红书")) platforms.push("小红书");
+  const hasNarrative = /角色|世界观|剧情|设定|城市|魔女/.test(request);
   return [
     { role: "intent_interpreter", name: "需求理解", detail: "提取目标、载体、约束和偏好。" },
-    { role: "researcher", name: "资料检索", detail: platforms.length ? `识别到平台：${platforms.join("、")}，准备召回对应规范。` : "召回记忆和资料库。" },
+    { role: "researcher", name: "资料检索", detail: platforms.length ? `召回 ${platforms.join("、")} 的表达语境和资料库。` : hasNarrative ? "召回相关项目设定、历史上下文和资料库。" : "召回相关项目资料和偏好。" },
     { role: "strategist", name: "创作策略", detail: "把需求、资料和规则转成创作策略。" },
     { role: "draft_writer", name: "初稿写作", detail: "生成第一版可继续讨论的草稿。" },
     { role: "editor", name: "改稿整理", detail: "整理表达，减少模板感。" },
     { role: "critic", name: "质量评审", detail: "检查清晰度和风格贴合度。" },
-    { role: "norm_steward", name: "规范检查", detail: "检查平台规则和发布边界。" },
-    { role: "memory_curator", name: "记忆沉淀", detail: "判断哪些信号需要进入记忆。" },
+    ...(platforms.length || hasNarrative ? [{ role: "norm_steward", name: hasNarrative ? "设定检查" : "规范检查", detail: hasNarrative ? "检查角色、世界观和剧情状态是否一致。" : "检查平台规则和发布边界。" }] : []),
   ];
 }
 
@@ -524,8 +501,7 @@ function renderPendingChat(request, preview = {}, status = "正在打磨第一�
   stopPendingTyping();
   currentSessionId = null;
   currentManifest = null;
-  renderEvolution(null);
-  renderLearning([], { completed: false });
+  renderSessionReview([]);
   els.chatTitle.textContent = truncate(request, 22);
   els.chatUpdatedAt.textContent = "正在生成";
   els.messageList.innerHTML = "";
@@ -579,7 +555,7 @@ function workflowPreviewFromTrace(trace = []) {
   return stages;
 }
 
-function appendInlineTyping(status = "正在继续打磨", preview = {}) {
+function appendInlineTyping(status = "正在继续打磨") {
   stopPendingTyping();
   const item = document.createElement("article");
   item.className = "message assistant typing-message";
@@ -593,12 +569,12 @@ function appendInlineTyping(status = "正在继续打磨", preview = {}) {
     </div>`;
   els.messageList.appendChild(item);
   els.messageList.scrollTop = els.messageList.scrollHeight;
-  const stages = preview.stages?.length ? preview.stages : [
-    { role: "memory_curator", name: "反馈理解", detail: "识别反馈里的偏好、规则和直接修改要求。" },
-    { role: "researcher", name: "上下文召回", detail: "重新召回相关记忆、资料和规范。" },
-    { role: "editor", name: "改稿整理", detail: "根据反馈生成新版本。" },
-    { role: "critic", name: "质量评审", detail: "检查新版本是否回应了反馈。" },
-    { role: "memory_curator", name: "记忆沉淀", detail: "把稳定偏好和规则写入记忆。" },
+  const stages = [
+    { role: "intent_interpreter", name: "反馈定位", detail: "识别你要改的对象、语气和新增约束。" },
+    { role: "researcher", name: "上下文对齐", detail: "对齐当前草稿、项目设定和已确认要求。" },
+    { role: "editor", name: "改稿整理", detail: "按反馈生成新的可用版本。" },
+    { role: "critic", name: "质量复核", detail: "检查新版本是否回应了这次反馈。" },
+    { role: "memory_curator", name: "反馈沉淀", detail: "记录这次反馈改变了什么，作为本会话后续改稿和完成后复盘依据。" },
   ];
   renderWorkflowSteps(stages, 0);
   let index = 0;
@@ -677,14 +653,15 @@ async function toggleSessionCompleted() {
   if (!currentSessionId) return;
   const currentButton = document.querySelector(".draft-complete-button");
   const completed = currentButton?.dataset.completed !== "true";
+  if (!completed) return openReopenWorkModal();
   currentButton?.closest(".draft-card")?.classList.add(completed ? "is-archiving" : "is-returning");
-  setBusy(true, completed ? "确认完成" : "撤销完成");
+  setBusy(true);
   try {
     await api(`/api/session/${currentSessionId}/complete`, { method: "POST", body: JSON.stringify({ completed }) });
     const data = await api(`/api/session/${currentSessionId}`);
     await renderChat(data);
     if (completed) openPublishPrompt();
-    showToast(completed ? "话题已完成，可以选择是否保存偏好" : "已回到继续创作状态");
+    if (sessionReviewQueue.length) showToast(`本次有 ${sessionReviewQueue.length} 条可沉淀内容`);
   } finally {
     setBusy(false);
   }
@@ -699,32 +676,64 @@ function closePublishPrompt() {
   els.publishPromptModal.classList.remove("open");
 }
 
+function openReopenWorkModal() {
+  if (!els.reopenWorkModal) return continueCurrentWork({ revokeLearning: true });
+  closePublishPrompt();
+  els.reopenWorkModal.classList.add("open");
+  els.reopenWorkModal.setAttribute("aria-hidden", "false");
+}
+
+function closeReopenWorkModal() {
+  if (!els.reopenWorkModal) return;
+  els.reopenWorkModal.classList.remove("open");
+  els.reopenWorkModal.setAttribute("aria-hidden", "true");
+}
+
 async function publishCurrentWork() {
   if (!currentSessionId) return;
-  setBusy(true, "准备发布页");
+  setBusy(true);
   try {
     const data = await api("/api/publish/draft", { method: "POST", body: JSON.stringify({ work_id: currentSessionId }) });
     closePublishPrompt();
     await openPublish(data.post.post_id);
+    maybeOpenCompletionReview();
   } finally {
     setBusy(false);
   }
 }
 
-async function continueCurrentWork() {
+function saveWorkOnly() {
+  closePublishPrompt();
+  maybeOpenCompletionReview();
+}
+
+function maybeOpenCompletionReview() {
+  if (sessionReviewQueue.length) window.setTimeout(() => openSessionReview(), 160);
+}
+
+async function continueCurrentWork({ revokeLearning = true } = {}) {
   if (!currentSessionId) return closePublishPrompt();
   closePublishPrompt();
-  await api(`/api/session/${currentSessionId}/complete`, { method: "POST", body: JSON.stringify({ completed: false }) });
+  closeReopenWorkModal();
+  const result = await api(`/api/session/${currentSessionId}/complete`, {
+    method: "POST",
+    body: JSON.stringify({ completed: false, revoke_learning: revokeLearning }),
+  });
   const data = await api(`/api/session/${currentSessionId}`);
   await renderChat(data);
-  showToast("已回到继续创作状态");
+  const revoked = Number(result.revoked_learning_count || 0) + Number(result.revoked_confirmed_learning_count || 0);
+  showToast(revokeLearning && revoked ? `已删除 ${revoked} 条本次学习` : "已回到继续创作状态");
 }
 
 async function openPublish(postId, push = true) {
-  setBusy(true, "打开发布页");
+  setBusy(true);
   try {
     previousPublishScreen = currentScreenName === "publish" ? previousPublishScreen : currentScreenName;
     const data = await api(`/api/post/${postId}`);
+    if (data.post?.status === "published") {
+      await openPostDetail(data.post, push);
+      return;
+    }
     renderPublish(data);
     showScreen("publish", false);
     if (push) history.pushState({ postId }, "", `/publish/${postId}`);
@@ -738,7 +747,7 @@ function renderPublish(data) {
   currentPublishPost = post;
   currentSessionId = post.session_id || currentSessionId;
   publishTags = Array.isArray(post.tags) ? [...post.tags] : [];
-  publishDefaultTags = data.default_tags || publishDefaultTags;
+  publishDefaultTags = [];
   publishCoverDataUrl = "";
   els.publishTitle.value = post.title || "";
   els.publishBody.value = normalizeCreativeText(post.body || "");
@@ -762,15 +771,6 @@ function setPublishCover(src) {
 
 function renderPublishTags() {
   els.publishTagChoices.innerHTML = "";
-  for (const tag of publishDefaultTags) {
-    const button = document.createElement("button");
-    button.type = "button";
-    button.className = "publish-tag-choice";
-    button.classList.toggle("active", publishTags.includes(tag));
-    button.textContent = tag;
-    button.addEventListener("click", () => togglePublishTag(tag));
-    els.publishTagChoices.appendChild(button);
-  }
   els.publishTagList.innerHTML = "";
   for (const tag of publishTags) {
     const item = document.createElement("button");
@@ -797,11 +797,6 @@ function addPublishTag(value) {
 function removePublishTag(tag) {
   publishTags = publishTags.filter((item) => item !== tag);
   renderPublishTags();
-}
-
-function togglePublishTag(tag) {
-  if (publishTags.includes(tag)) removePublishTag(tag);
-  else addPublishTag(tag);
 }
 
 function updatePublishPreview() {
@@ -839,13 +834,13 @@ async function savePublish(status = "draft") {
     status,
     cover_data_url: publishCoverDataUrl,
   };
-  setBusy(true, status === "published" ? "发布作品" : "保存草稿");
+  setBusy(true);
   try {
     const data = await api(`/api/post/${currentPublishPost.post_id}`, { method: "POST", body: JSON.stringify(payload) });
     renderPublish(data);
     await loadPosts();
     showToast(status === "published" ? "已发布到个人主页" : "发布草稿已保存");
-    if (status === "published") openProfile();
+    if (status === "published") await openPostDetail(data.post || data, true);
   } finally {
     setBusy(false);
   }
@@ -855,7 +850,7 @@ async function deleteCurrentPost() {
   if (!currentPublishPost?.post_id) return;
   const confirmed = window.confirm("删除后，这篇作品会从个人主页和资产库移除。确定删除吗？");
   if (!confirmed) return;
-  setBusy(true, "删除作品");
+  setBusy(true);
   try {
     await api(`/api/post/${currentPublishPost.post_id}`, { method: "DELETE" });
     currentPublishPost = null;
@@ -942,7 +937,7 @@ async function loadSessions() {
   sessionsCache = data.sessions || [];
   renderSessions(sessionsCache);
   renderInspirationGrid();
-  renderEvolution(currentManifest);
+  updateSessionReviewButton();
   return sessionsCache;
 }
 
@@ -958,7 +953,7 @@ async function loadAssets() {
 async function loadPosts() {
   const data = await api("/api/posts?project_id=default");
   postsCache = data.posts || [];
-  publishDefaultTags = data.default_tags || publishDefaultTags;
+  publishDefaultTags = [];
   renderProfile();
   return postsCache;
 }
@@ -1160,6 +1155,8 @@ function resetInspirationParallax() {
 }
 
 function openPreview(item) {
+  currentPreviewMode = "inspiration";
+  els.previewModal.classList.remove("post-preview-mode");
   const related = relatedAsset(item);
   const collectedAssetId = related?.collected ? related.asset_id : "";
   currentPreviewItem = { ...item, liked: Boolean(item.liked || related?.liked), asset_id: item.asset_id || collectedAssetId };
@@ -1169,6 +1166,9 @@ function openPreview(item) {
   }
   els.previewTitle.textContent = currentPreviewItem.title || "灵感详情";
   els.previewType.textContent = currentPreviewItem.type || assetLabel(currentPreviewItem);
+  if (els.previewPromptSection) els.previewPromptSection.hidden = false;
+  if (els.previewPromptLabel) els.previewPromptLabel.textContent = "完整提示词";
+  if (els.previewOutputLabel) els.previewOutputLabel.textContent = "最后版本";
   els.previewPrompt.textContent = normalizeCreativeText(currentPreviewItem.prompt || "无");
   els.previewOutput.textContent = normalizeCreativeText(currentPreviewItem.final_content || "这条灵感还没有示例输出。");
   const meta = [];
@@ -1179,11 +1179,46 @@ function openPreview(item) {
   const collected = isCollected(currentPreviewItem);
   els.collectPreviewBtn.textContent = collected ? "取消收藏" : "收藏";
   els.likePreviewBtn.textContent = currentPreviewItem.liked ? "已喜欢" : "喜欢";
+  els.applyPreviewBtn.textContent = "应用";
   els.previewModal.classList.add("open");
 }
 
 function closePreview() {
   els.previewModal.classList.remove("open");
+  if (currentPreviewMode === "post" && location.pathname.startsWith("/publish/")) {
+    history.pushState({}, "", currentScreenName === "assets" ? "/assets" : "/profile");
+  }
+  currentPreviewMode = "inspiration";
+}
+
+async function openPostDetail(post, push = true) {
+  currentPreviewMode = "post";
+  currentPublishPost = post;
+  currentSessionId = post.session_id || currentSessionId;
+  currentPreviewItem = { ...post, source: "published_post" };
+  if (currentScreenName !== "profile" && currentScreenName !== "assets") {
+    await openProfile(false);
+  }
+  const cover = post.cover_url || "/assets/inspiration/writing.jpg";
+  if (els.previewImage) {
+    els.previewImage.src = cover;
+    els.previewImage.alt = post.title || "帖子封面";
+  }
+  els.previewTitle.textContent = post.title || "未命名帖子";
+  els.previewType.textContent = (post.tags || []).slice(0, 2).join(" / ") || "已发布";
+  if (els.previewPromptSection) els.previewPromptSection.hidden = true;
+  if (els.previewOutputLabel) els.previewOutputLabel.textContent = "正文";
+  els.previewOutput.textContent = normalizeCreativeText(post.body || "这篇帖子还没有正文。");
+  const meta = [];
+  if (post.published_at) meta.push(`发布于 ${post.published_at.slice(0, 10)}`);
+  if (post.tags?.length) meta.push(post.tags.join(" / "));
+  els.previewMeta.textContent = meta.join("  |  ") || "个人主页帖子";
+  els.likePreviewBtn.textContent = post.session_id ? "打开原会话" : "返回主页";
+  els.collectPreviewBtn.textContent = "删除帖子";
+  els.applyPreviewBtn.textContent = "编辑帖子";
+  els.previewModal.classList.add("post-preview-mode");
+  els.previewModal.classList.add("open");
+  if (push) history.pushState({ postId: post.post_id, mode: "post" }, "", `/publish/${post.post_id}`);
 }
 
 function categoryName(category) {
@@ -1211,6 +1246,10 @@ function refreshVisibleCollections() {
 
 async function collectPreview() {
   if (!currentPreviewItem) return;
+  if (currentPreviewMode === "post") {
+    await deletePostFromPreview();
+    return;
+  }
   const item = currentPreviewItem;
   const collected = isCollected(item);
   const data = await api(collected ? "/api/assets/uncollect" : "/api/assets/collect", {
@@ -1226,6 +1265,12 @@ async function collectPreview() {
 
 async function likePreview() {
   if (!currentPreviewItem) return;
+  if (currentPreviewMode === "post") {
+    closePreview();
+    if (currentPreviewItem.session_id) await openSession(currentPreviewItem.session_id);
+    else await openProfile();
+    return;
+  }
   const item = currentPreviewItem;
   const liked = !item.liked;
   const data = await api("/api/assets/like", {
@@ -1267,6 +1312,13 @@ function imageForCard(item = {}, index = 0) {
 }
 
 function applyPreview() {
+  if (currentPreviewMode === "post") {
+    const postId = currentPreviewItem?.post_id;
+    if (!postId) return;
+    closePreview();
+    openPublishEditor(postId);
+    return;
+  }
   if (!currentPreviewItem) return;
   els.request.value = currentPreviewItem.prompt || "";
   closePreview();
@@ -1274,6 +1326,36 @@ function applyPreview() {
   history.pushState({}, "", "/#generate");
   pulseElement(els.createForm, "composer-arrive", 680);
   els.request.focus();
+}
+
+async function openPublishEditor(postId, push = true) {
+  setBusy(true);
+  try {
+    previousPublishScreen = currentScreenName === "publish" ? previousPublishScreen : currentScreenName;
+    const data = await api(`/api/post/${postId}`);
+    renderPublish(data);
+    showScreen("publish", false);
+    if (push) history.pushState({ postId, mode: "edit" }, "", `/publish/${postId}`);
+  } finally {
+    setBusy(false);
+  }
+}
+
+async function deletePostFromPreview() {
+  if (!currentPreviewItem?.post_id) return;
+  const confirmed = window.confirm("删除后，这篇帖子会从个人主页和资产库移除。确定删除吗？");
+  if (!confirmed) return;
+  setBusy(true);
+  try {
+    await api(`/api/post/${currentPreviewItem.post_id}`, { method: "DELETE" });
+    closePreview();
+    await loadPosts();
+    await loadAssets();
+    renderProfile();
+    showToast("帖子已删除");
+  } finally {
+    setBusy(false);
+  }
 }
 
 function renderProfile() {
@@ -1407,7 +1489,7 @@ async function deleteAssetFromCard(asset) {
   closeAssetCardMenus();
   const confirmed = window.confirm("删除这个资产？删除后不会影响已经沉淀的记忆和偏好。");
   if (!confirmed) return;
-  setBusy(true, "删除资产");
+  setBusy(true);
   try {
     await api(`/api/asset/${asset.asset_id}`, { method: "DELETE" });
     assetsCache = assetsCache.filter((item) => item.asset_id !== asset.asset_id && item.post_id !== asset.post_id);
@@ -1443,24 +1525,78 @@ function assetLabel(asset) {
   return "内容资产";
 }
 
-function renderEvolution(manifest) {
-  if (!els.evolutionList) return;
-  els.evolutionList.innerHTML = "";
-  const proposals = manifest?.proposals || [];
-  if (!(currentSessionId || currentAsset?.session_id) || !proposals.length) {
-    els.evolutionList.innerHTML = '<div class="published-item">这里会显示可审阅的工作规则改进。</div>';
-    return;
+function renderSessionReview(items = []) {
+  sessionReviewQueue = (items || []).filter((item) => item.status === "pending");
+  sessionReviewIndex = Math.min(sessionReviewIndex, Math.max(sessionReviewQueue.length - 1, 0));
+  updateSessionReviewButton();
+}
+
+function updateSessionReviewButton() {
+  if (!els.evolutionReviewBtn || !els.evolutionReviewCount) return;
+  const count = sessionReviewQueue.length;
+  els.evolutionReviewBtn.hidden = count === 0 || currentScreenName !== "chat";
+  els.evolutionReviewCount.textContent = String(count);
+  els.evolutionReviewBtn.title = count ? `本次学习沉淀：${count} 条可确认` : "本次没有待确认沉淀";
+}
+
+function openSessionReview(index = 0) {
+  if (!sessionReviewQueue.length) return showToast("本次没有待确认沉淀");
+  sessionReviewIndex = Math.max(0, Math.min(index, sessionReviewQueue.length - 1));
+  renderSessionReviewModal();
+  els.applyEvolutionModal.classList.add("open");
+  els.applyEvolutionModal.setAttribute("aria-hidden", "false");
+}
+
+function renderSessionReviewModal() {
+  const item = sessionReviewQueue[sessionReviewIndex];
+  if (!item) return closeModal("applyEvolutionModal");
+  pendingReviewItemId = item.item_id || "";
+  els.evolutionReviewCounter.textContent = `${sessionReviewIndex + 1} / ${sessionReviewQueue.length}`;
+  els.evolutionReviewTitle.textContent = item.title || reviewTypeLabel(item.source_type);
+  els.evolutionReviewBody.textContent = item.suggestion || "这次创作里有一条值得复盘的信号。";
+  els.evolutionReviewScope.textContent = `适用范围：${scopeLabel(item.suggested_scope || "project")}`;
+  els.evolutionReviewImpact.textContent = `以后影响：${item.impact || "后续类似创作会参考这条确认。"}`;
+  els.evolutionReviewTech.textContent = reviewTechnicalText(item);
+  els.ignoreEvolutionBtn.textContent = item.skip_label || "跳过";
+  els.confirmApplyEvolutionBtn.textContent = item.accept_label || "保存这条";
+}
+
+function reviewTypeLabel(sourceType) {
+  const labels = {
+    memory: "记住这个偏好",
+    project_rule: "保存为项目规则",
+    assistant_workflow: "调整助理工作方式",
+  };
+  return labels[sourceType] || "本次复盘";
+}
+
+function reviewTechnicalText(item) {
+  const sourceLabel = reviewTypeLabel(item.source_type);
+  const lines = [
+    `我会把它作为「${sourceLabel}」处理。`,
+    `建议来源：${userFacingReviewReason(item)}`,
+    `判断依据：${item.evidence_summary || "来自本次创作过程中的明确要求或检查结果。"}`,
+  ];
+  if (item.source_type === "assistant_workflow") {
+    lines.push(
+      item.needs_validation ? "处理方式：先保留为待验证改进点，不会立刻改变所有创作。" : "处理方式：已有验证记录，确认后进入对应工作规则。",
+      "你可以跳过；跳过不会删除这次创作，也不会影响作品保存。",
+    );
+  } else {
+    lines.push(
+      "处理方式：保存后只按显示的适用范围生效，不会自动扩大到所有项目。",
+      "你可以跳过；跳过不会影响当前作品。",
+    );
   }
-  for (const proposal of proposals.slice(0, 4)) {
-    const card = document.createElement("article");
-    card.className = "evolution-card";
-    card.innerHTML = `
-      <div class="evolution-target">${escapeHtml(proposal.target_component || "harness")}</div>
-      <strong>${escapeHtml(proposal.targeted_fix || "收集更多证据后再调整。")}</strong>
-      <small>${escapeHtml(proposal.expected_improvement || "")}</small>
-      <button type="button" data-proposal-id="${escapeHtml(proposal.proposal_id)}">应用到工作规则</button>`;
-    els.evolutionList.appendChild(card);
-  }
+  return lines.join("\n");
+}
+
+function userFacingReviewReason(item) {
+  const reason = String(item.reason || "");
+  if (reason.includes("用户给出的约束")) return "你在这次创作里给出了明确约束或项目设定。";
+  if (reason.includes("用户在需求") || reason.includes("写作偏好")) return "你在需求或反馈里表达了可复用的创作偏好。";
+  if (item.source_type === "assistant_workflow") return "这次创作检查里出现了可改进的协作方式。";
+  return reason || "来自这次创作过程中的稳定信号。";
 }
 
 function escapeHtml(value) {
@@ -1494,7 +1630,7 @@ function syncSkillMenuSelection() {
   });
 }
 
-function setSkillLabels(text = "使用技能") {
+function setSkillLabels(text = "开始方式") {
   els.selectedSkillLabel.textContent = text;
   els.inspirationSkillLabel.textContent = text;
   els.chatSkillLabel.textContent = text;
@@ -1560,7 +1696,7 @@ function startNewChat() {
   els.request.dataset.skillPrompt = "";
   els.feedbackNote.dataset.skillPrompt = "";
   clearSelectedSkill({ removePrompt: false });
-  renderLearning([], { completed: false });
+  renderSessionReview([]);
   showScreen("generate");
   history.pushState({}, "", "/#generate");
   requestAnimationFrame(() => els.request.focus());
@@ -1574,10 +1710,20 @@ async function loadSettings() {
   els.llmModel.value = llm.model || "";
   els.llmBaseUrl.value = llm.base_url || "";
   els.llmApiKey.placeholder = llm.has_api_key ? "已保存 key，留空不修改" : "输入 API key";
+  const runtime = data.runtime_llm || {};
+  if (els.modelRuntimeStatus) {
+    els.modelRuntimeStatus.textContent = runtime.enabled
+      ? `${runtime.provider || llm.provider || "已连接"} / ${runtime.model || llm.model || "默认模型"}`
+      : `本地兜底模式${runtime.error ? `：${runtime.error}` : ""}`;
+  }
   const memory = data.memory_policy || {};
   els.memoryCandidateLimit.value = memory.candidate_limit ?? 3;
   els.memoryMinConfidence.value = memory.min_confidence ?? 0.35;
   els.memoryCompleteOnly.checked = memory.complete_only !== false;
+  const harness = data.harness || {};
+  if (els.harnessAutoPropose) els.harnessAutoPropose.checked = harness.auto_propose !== false;
+  if (els.harnessRecordSkillRuns) els.harnessRecordSkillRuns.checked = harness.record_skill_runs !== false;
+  if (els.harnessMinEvalCases) els.harnessMinEvalCases.value = harness.min_eval_cases ?? 3;
   const profile = data.profile || {};
   setProfileText(profile.nickname || "创作者", profile.bio || "");
   setAvatarPreview(profile.avatar_data || "");
@@ -1606,11 +1752,11 @@ function closeProfileEdit() {
 }
 
 function setSettingsSection(section, push = true) {
-  const target = document.querySelector(`[data-settings-panel="${section || "model"}"]`);
-  activeSettingsSection = target ? target.dataset.settingsPanel : "model";
+  const target = document.querySelector(`[data-settings-panel="${section || "general"}"]`);
+  activeSettingsSection = target ? target.dataset.settingsPanel : "general";
   els.settingsNavItems.forEach((item) => item.classList.toggle("active", item.dataset.settingsSection === activeSettingsSection));
   els.settingsPanels.forEach((panel) => panel.classList.toggle("active", panel.dataset.settingsPanel === activeSettingsSection));
-  if (push && els.settingsScreen.classList.contains("active")) history.pushState({}, "", `/settings/${activeSettingsSection}`);
+  if (push && els.settingsModal.classList.contains("open")) history.pushState({}, "", `/settings/${activeSettingsSection}`);
 }
 
 async function loadPreferences() {
@@ -1678,6 +1824,21 @@ async function saveMemoryPolicy(event) {
     }),
   });
   showToast("记忆策略已保存");
+}
+
+async function saveHarnessSettings(event) {
+  event.preventDefault();
+  await api("/api/settings", {
+    method: "POST",
+    body: JSON.stringify({
+      harness: {
+        auto_propose: els.harnessAutoPropose.checked,
+        record_skill_runs: els.harnessRecordSkillRuns.checked,
+        min_eval_cases: Number(els.harnessMinEvalCases.value || 3),
+      },
+    }),
+  });
+  showToast("工作规则设置已保存");
 }
 
 async function saveProfile() {
@@ -1766,6 +1927,53 @@ function drawAvatarFrame(canvas, size, { showOverlay = false } = {}) {
   }
 }
 
+async function runDataDoctor() {
+  try {
+    const result = await api("/api/data/doctor");
+    const statusText = result.status === "pass" ? "工作区状态正常" : result.status === "warn" ? "有几项需要留意" : "有项目需要处理";
+    if (els.dataDoctorStatus) {
+      els.dataDoctorStatus.textContent = workspaceDoctorCopy(result);
+    }
+    showToast(statusText);
+  } catch (error) {
+    showToast(error.message);
+  }
+}
+
+async function rebuildIndexes() {
+  setBusy(true);
+  try {
+    await api("/api/data/rebuild-index", { method: "POST", body: "{}" });
+    if (els.dataDoctorStatus) {
+      els.dataDoctorStatus.textContent = "搜索已重新整理。你的作品正文、偏好和资料内容没有被修改。";
+    }
+    showToast("搜索已重新整理");
+  } catch (error) {
+    showToast(error.message);
+  } finally {
+    setBusy(false);
+  }
+}
+
+function workspaceDoctorCopy(result) {
+  const issues = Array.isArray(result.issues) ? result.issues : [];
+  if (result.status === "pass" || !issues.length) {
+    return "没有发现异常。对话、作品、资料和封面引用都可以正常使用。";
+  }
+  const priority = issues.find((item) => item.severity === "error") || issues[0];
+  const code = priority?.code || "";
+  const copy = {
+    invalid_session_json: "有一条对话记录无法读取，可能需要从历史中删除或恢复备份。",
+    missing_session_ref: "有一条历史记录找不到对应对话文件，建议在历史列表中核对。",
+    missing_post_media: "有作品封面文件缺失，作品正文仍在，可以重新选择封面。",
+    invalid_posts_json: "作品列表文件无法读取，建议先不要继续发布，检查本地数据文件。",
+    invalid_memory_jsonl: "偏好记录里有无法读取的内容，建议先导出数据再处理。",
+    invalid_knowledge_jsonl: "资料库里有无法读取的内容，建议重新导入相关资料。",
+    stale_temp_file: "上次保存可能被中断，已发现临时文件；通常不影响作品正文。",
+  };
+  return copy[code] || "发现一项需要留意的数据状态。你的作品正文不会被自动修改，可以先导出数据再处理。";
+}
+
 function clampAvatarOffset() {
   const canvas = els.avatarCanvas;
   const image = avatarState.image;
@@ -1817,13 +2025,14 @@ async function createSessionFrom(textarea) {
     return;
   }
   pulseElement(textarea.closest(".composer"), "composer-launch", 620);
-  setBusy(true, "正在创作");
+  setBusy(true);
   const activeSkill = selectedSkill;
-  const preferences = activeSkill ? `使用技能：${activeSkill.id}` : "";
-  const preview = await getWorkflowPreview(request, preferences);
+  const capabilityId = activeSkill?.id || "";
+  const preferences = "";
+  const preview = await getWorkflowPreview(request, preferences, capabilityId);
   renderPendingChat(request, preview);
   try {
-    const data = await api("/api/session", { method: "POST", body: JSON.stringify({ request, preferences, project_id: "default" }) });
+    const data = await api("/api/session", { method: "POST", body: JSON.stringify({ request, preferences, capability_id: capabilityId, project_id: "default" }) });
     textarea.value = "";
     textarea.dataset.skillPrompt = "";
     clearSelectedSkill({ input: textarea, removePrompt: false });
@@ -1848,16 +2057,13 @@ async function sendFeedback(event) {
   const note = els.feedbackNote.value.trim();
   if (!note) return showToast("写一点反馈或补充要求");
   pulseElement(els.feedbackForm, "composer-launch", 520);
-  setBusy(true, "根据反馈生成");
+  setBusy(true);
   appendMessage("user", note, "反馈");
-  const activeSkill = selectedSkill;
-  const skillLine = activeSkill ? `使用技能：${activeSkill.id}\n` : "";
-  const preview = await getWorkflowPreview(skillLine + note, skillLine);
-  appendInlineTyping("正在继续打磨", preview);
+  appendInlineTyping("正在继续打磨");
   try {
     const data = await api(`/api/session/${currentSessionId}/feedback`, {
       method: "POST",
-      body: JSON.stringify({ signal: "edit", note: skillLine + note, edited_text: "" }),
+      body: JSON.stringify({ signal: "edit", note, edited_text: "" }),
     });
     els.feedbackNote.value = "";
     els.feedbackNote.dataset.skillPrompt = "";
@@ -1918,29 +2124,70 @@ function showDelete(sessionId) {
   els.deleteModal.classList.add("open");
 }
 
-function showApplyEvolution(proposalId) {
-  pendingEvolutionProposalId = proposalId;
-  els.applyEvolutionNote.value = "";
-  els.applyEvolutionModal.classList.add("open");
-  els.applyEvolutionNote.focus();
-}
-
-async function confirmApplyEvolution() {
+async function acceptCurrentReviewItem() {
   const sessionId = currentSessionId || currentAsset?.session_id;
-  if (!sessionId || !pendingEvolutionProposalId) return;
-  const proposalId = pendingEvolutionProposalId;
-  pendingEvolutionProposalId = "";
-  setBusy(true, "应用改进");
+  if (!sessionId || !pendingReviewItemId) return;
+  const itemId = pendingReviewItemId;
+  const item = sessionReviewQueue[sessionReviewIndex] || {};
+  setBusy(true);
   try {
-    await api(`/api/session/${sessionId}/evolution/apply`, {
+    const result = await api(`/api/session/${sessionId}/review/${encodeURIComponent(itemId)}/accept`, {
       method: "POST",
-      body: JSON.stringify({ proposal_id: proposalId, reviewer_note: els.applyEvolutionNote.value }),
+      body: JSON.stringify({ scope: item.suggested_scope || "" }),
     });
-    closeModal("applyEvolutionModal");
-    showToast("改进已写入本地工作规则");
+    markReviewItemHandled(itemId, result.status || "accepted");
+    showToast(result.status === "blocked" ? result.message || "已保留为待验证改进点" : acceptedReviewToast(item));
+    if (item.source_type !== "assistant_workflow") await loadPreferences();
+    showNextReviewItem();
   } finally {
     setBusy(false);
   }
+}
+
+async function skipCurrentReviewItem() {
+  const sessionId = currentSessionId || currentAsset?.session_id;
+  if (!sessionId || !pendingReviewItemId) return;
+  const itemId = pendingReviewItemId;
+  setBusy(true);
+  try {
+    await api(`/api/session/${sessionId}/review/${encodeURIComponent(itemId)}/skip`, {
+      method: "POST",
+      body: JSON.stringify({ reviewer_note: "用户在本次复盘中选择跳过。" }),
+    });
+    markReviewItemHandled(itemId, "skipped");
+    showToast("已跳过这条复盘");
+    showNextReviewItem();
+  } finally {
+    setBusy(false);
+  }
+}
+
+function acceptedReviewToast(item) {
+  if (item.source_type === "assistant_workflow") return "已允许这条工作方式调整";
+  if (item.source_type === "project_rule") return "已保存为项目规则";
+  return "已保存这条偏好";
+}
+
+function markReviewItemHandled(itemId, status) {
+  sessionReviewQueue = sessionReviewQueue.filter((item) => item.item_id !== itemId);
+  if (currentManifest?.proposals && itemId.includes(":workflow:")) {
+    const proposalId = itemId.split(":").pop();
+    for (const proposal of currentManifest.proposals) {
+      if (proposal.proposal_id === proposalId) proposal.status = status;
+    }
+  }
+  updateSessionReviewButton();
+}
+
+function showNextReviewItem() {
+  if (!sessionReviewQueue.length) {
+    pendingReviewItemId = "";
+    closeModal("applyEvolutionModal");
+    showToast("本次复盘已处理完");
+    return;
+  }
+  sessionReviewIndex = Math.min(sessionReviewIndex, sessionReviewQueue.length - 1);
+  renderSessionReviewModal();
 }
 
 async function confirmDelete() {
@@ -1961,7 +2208,9 @@ async function confirmDelete() {
 }
 
 function closeModal(id) {
-  document.querySelector(`#${id}`).classList.remove("open");
+  const modal = document.querySelector(`#${id}`);
+  modal.classList.remove("open");
+  modal.setAttribute("aria-hidden", "true");
 }
 
 function bindEvents() {
@@ -2025,11 +2274,31 @@ function bindEvents() {
   els.publishSubmitBtn.addEventListener("click", () => savePublish("published"));
   els.skillButton.addEventListener("click", () => openSkillMenu(els.skillButton));
   els.inspirationSkillButton.addEventListener("click", () => openSkillMenu(els.inspirationSkillButton));
-  els.chatSkillButton.addEventListener("click", () => openSkillMenu(els.chatSkillButton));
+  if (els.chatSkillButton && !els.chatSkillButton.hidden) {
+    els.chatSkillButton.addEventListener("click", () => openSkillMenu(els.chatSkillButton));
+  }
   els.settingsBtn.addEventListener("click", () => openSettings());
+  els.closeSettingsBtn.addEventListener("click", closeSettingsModal);
+  els.settingsModal.addEventListener("click", (event) => {
+    if (event.target === els.settingsModal) closeSettingsModal();
+    const go = event.target.closest("[data-settings-go]");
+    if (go) setSettingsSection(go.dataset.settingsGo || "general");
+    if (event.target.closest("[data-settings-open-assets]")) {
+      closeSettingsModal();
+      openAssets();
+    }
+    if (event.target.closest("[data-settings-open-profile]")) {
+      closeSettingsModal();
+      openProfile();
+    }
+    if (event.target.closest("[data-settings-close-only]")) closeSettingsModal();
+  });
   els.profileBtn.addEventListener("click", () => openProfile());
   els.settingsForm.addEventListener("submit", saveSettings);
   els.memoryPolicyForm.addEventListener("submit", saveMemoryPolicy);
+  els.harnessSettingsForm.addEventListener("submit", saveHarnessSettings);
+  if (els.runDataDoctorBtn) els.runDataDoctorBtn.addEventListener("click", runDataDoctor);
+  if (els.rebuildIndexBtn) els.rebuildIndexBtn.addEventListener("click", rebuildIndexes);
   els.settingsNavItems.forEach((button) => button.addEventListener("click", () => setSettingsSection(button.dataset.settingsSection)));
   els.profileEditBtn.addEventListener("click", openProfileEdit);
   els.profilePageSaveBtn.addEventListener("click", saveProfile);
@@ -2094,19 +2363,6 @@ function bindEvents() {
     const result = await api("/api/llm/test", { method: "POST", body: "{}" });
     showToast(result.ok ? `${result.provider} 连接成功` : result.message);
   });
-  els.learningToggleBtn.addEventListener("click", toggleLearningPanel);
-  els.learningList.addEventListener("click", async (event) => {
-    const button = event.target.closest("button[data-learning-id]");
-    if (!button) return;
-    setBusy(true, "更新偏好");
-    try {
-      await applyLearningItem(button.dataset.learningId, button.dataset.learningAction);
-    } catch (error) {
-      showToast(error.message);
-    } finally {
-      setBusy(false);
-    }
-  });
   els.messageList.addEventListener("click", async (event) => {
     if (event.target.closest(".draft-complete-button")) await toggleSessionCompleted();
   });
@@ -2154,16 +2410,15 @@ function bindEvents() {
   els.cancelDeleteBtn.addEventListener("click", () => closeModal("deleteModal"));
   els.confirmDeleteBtn.addEventListener("click", confirmDelete);
   els.cancelApplyEvolutionBtn.addEventListener("click", () => closeModal("applyEvolutionModal"));
-  els.confirmApplyEvolutionBtn.addEventListener("click", confirmApplyEvolution);
+  els.confirmApplyEvolutionBtn.addEventListener("click", acceptCurrentReviewItem);
+  els.ignoreEvolutionBtn.addEventListener("click", skipCurrentReviewItem);
+  els.evolutionReviewBtn.addEventListener("click", () => openSessionReview());
   els.goPublishBtn.addEventListener("click", publishCurrentWork);
-  els.saveWorkOnlyBtn.addEventListener("click", closePublishPrompt);
-  els.continueWorkBtn.addEventListener("click", continueCurrentWork);
-  if (els.evolutionList) {
-    els.evolutionList.addEventListener("click", (event) => {
-      const button = event.target.closest("button[data-proposal-id]");
-      if (button) showApplyEvolution(button.dataset.proposalId);
-    });
-  }
+  els.saveWorkOnlyBtn.addEventListener("click", saveWorkOnly);
+  els.continueWorkBtn.addEventListener("click", openReopenWorkModal);
+  if (els.reopenAndClearLearningBtn) els.reopenAndClearLearningBtn.addEventListener("click", () => continueCurrentWork({ revokeLearning: true }));
+  if (els.reopenKeepLearningBtn) els.reopenKeepLearningBtn.addEventListener("click", () => continueCurrentWork({ revokeLearning: false }));
+  if (els.cancelReopenWorkBtn) els.cancelReopenWorkBtn.addEventListener("click", closeReopenWorkModal);
   els.closePreviewBtn.addEventListener("click", closePreview);
   els.likePreviewBtn.addEventListener("click", likePreview);
   els.collectPreviewBtn.addEventListener("click", collectPreview);
@@ -2184,7 +2439,7 @@ async function bootFromRoute(push = false) {
   if (location.pathname === "/assets") return openAssets(push);
   if (location.pathname === "/profile") return openProfile(push);
   const settingsMatch = location.pathname.match(/^\/settings\/?([^/]*)$/);
-  if (settingsMatch) return openSettings(settingsMatch[1] || "model", push);
+  if (settingsMatch) return openSettings(settingsMatch[1] || "general", push);
   showScreen(location.hash === "#generate" ? "generate" : "inspiration", push);
 }
 

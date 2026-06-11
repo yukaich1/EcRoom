@@ -1,0 +1,24 @@
+{
+  "input_contract": [
+    "raw_request",
+    "topic",
+    "audience",
+    "length",
+    "materials",
+    "constraints"
+  ],
+  "output_contract": [
+    "outline",
+    "longform_draft",
+    "section_edit_handles"
+  ],
+  "quality_gates": [
+    "structure_integrity",
+    "argument_flow",
+    "naturalness",
+    "continuation_ready"
+  ],
+  "feedback_bridge": {
+    "edit_handles_required": true
+  }
+}

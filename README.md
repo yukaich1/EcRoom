@@ -11,7 +11,7 @@ EcRoom 是一个面向泛内容创作的自进化 Multi-Agent 共创工作室。
 ## 主要特性
 
 - **多 Agent 协作**：将内容创作拆分为理解、检索、规划、写作、编辑、评审、规范检查和记忆沉淀等环节。
-- **专家技能工作流**：把常见创作能力封装为可复用的技能路线，例如叙事设定、发布适配、资料驱动、深度改稿和方案实验。
+- **通用能力流程**：把常见创作任务封装为可复用的开始方式，例如短文首稿、长文方案、资料写作、职业文本、故事设定和视频脚本。
 - **人机共创闭环**：支持用户多轮反馈、局部修改、确认完成、发布归档、收藏复用和再次迭代。
 - **可选择的记忆沉淀**：只有在用户确认作品完成后，系统才会整理可能有价值的偏好，并交给用户选择是否保存。
 - **混合检索记忆**：结合关键词检索与 Chroma 向量检索，兼顾平台名、角色名、禁用词等精确信号和语义相似的历史偏好。
@@ -41,7 +41,7 @@ flowchart TB
   API --> Room["CreativeRoom Runner"]
 
   Room --> Agents["Multi-Agent 协作层"]
-  Room --> Skills["专家技能包"]
+  Room --> Capabilities["通用能力流程"]
   Room --> Memory["分层记忆与混合检索"]
   Room --> LLM["LLM Provider"]
   Room --> Harness["Agentic Harness"]
@@ -62,7 +62,7 @@ flowchart TB
 ## 快速开始
 
 ```powershell
-cd EvolvingCreativeRoom
+cd EcRoom
 python -m pip install -e ".[dev]"
 .\scripts\start.ps1
 ```
@@ -118,7 +118,7 @@ evolving_creative_room/
 
 harness/
   agents/          Agent 工作规则
-  skills/          专家技能包
+  capabilities/    通用能力流程
 
 tests/             回归测试
 scripts/           启动与测试脚本
@@ -126,4 +126,4 @@ scripts/           启动与测试脚本
 
 ## 当前状态
 
-EcRoom 目前是一个本地可运行的产品原型，已经具备创作、反馈、作品归档、资产复用、专家技能、多模型接入、混合检索记忆和自进化 harness 的基础闭环。
+EcRoom 目前是一个本地可运行的产品原型，已经具备创作、反馈、作品归档、资产复用、通用能力流程、多模型接入、混合检索记忆和自进化 harness 的基础闭环。

@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 import json
-from dataclasses import asdict, dataclass, field
+import re
+from dataclasses import asdict, dataclass, field, fields
 from pathlib import Path
 
 
@@ -195,6 +196,64 @@ def get_skill(skill_id: str) -> CreativeSkill | None:
     return SKILLS.get(key) or SKILLS.get(SKILL_ALIASES.get(key, ""))
 
 
+def load_skill_packages(root: Path | str) -> dict[str, CreativeSkill]:
+    """Load runtime skill packages from harness files without overwriting them."""
+
+    root = Path(root)
+    loaded: dict[str, CreativeSkill] = {}
+    field_names = {item.name for item in fields(CreativeSkill)}
+    if root.exists():
+        for spec_path in sorted(root.glob("*/skill.json")):
+            try:
+                data = json.loads(spec_path.read_text(encoding="utf-8"))
+                data.update(_workflow_overrides(spec_path.with_name("workflow.md")))
+                values = {key: value for key, value in data.items() if key in field_names}
+                skill = CreativeSkill(**values)
+            except Exception:
+                continue
+            loaded[skill.skill_id] = skill
+    return loaded or dict(SKILLS)
+
+
+def seed_missing_skill_packages(root: Path | str) -> list[Path]:
+    """Create missing harness skill files, preserving existing edits."""
+
+    root = Path(root)
+    root.mkdir(parents=True, exist_ok=True)
+    written: list[Path] = []
+    for skill in SKILLS.values():
+        skill_dir = root / skill.skill_id
+        skill_dir.mkdir(parents=True, exist_ok=True)
+        spec = asdict(skill)
+        spec["component"] = f"skills/{skill.skill_id}"
+        spec["owner"] = "skill_orchestrator"
+        spec["rollback_target"] = skill.version
+        files = {
+            skill_dir / "skill.json": json.dumps(spec, ensure_ascii=False, indent=2),
+            skill_dir / "workflow.md": _workflow_doc(skill),
+            skill_dir / "eval_cases.json": json.dumps(
+                [
+                    {
+                        "case_id": f"{skill.skill_id}_contract",
+                        "input": skill.examples[0] if skill.examples else skill.trigger,
+                        "must_check": skill.evaluation,
+                        "output_contract": skill.output_contract,
+                    }
+                ],
+                ensure_ascii=False,
+                indent=2,
+            ),
+            skill_dir / "examples.jsonl": "\n".join(json.dumps({"input": item, "skill_id": skill.skill_id}, ensure_ascii=False) for item in skill.examples)
+            + ("\n" if skill.examples else ""),
+        }
+        for path, content in files.items():
+            if path.exists():
+                continue
+            path.write_text(content, encoding="utf-8")
+            written.append(path)
+    return written
+
+
 def write_skill_packages(root: Path | str) -> list[Path]:
     """把内置技能同步为 Agentic Harness 可审阅的文件包。"""
 
@@ -266,3 +325,46 @@ def _workflow_doc(skill: CreativeSkill) -> str:
     lines.extend(f"- {item}" for item in skill.failure_policy)
     lines.append("")
     return "\n".join(lines)
+
+
+def _workflow_overrides(path: Path) -> dict[str, list[str]]:
+    if not path.exists():
+        return {}
+    sections = _markdown_sections(path.read_text(encoding="utf-8"))
+    mapping = {
+        "workflow": "workflow_steps",
+        "tool contract": "tool_contract",
+        "output contract": "output_contract",
+        "failure policy": "failure_policy",
+    }
+    overrides: dict[str, list[str]] = {}
+    for section_name, field_name in mapping.items():
+        values = sections.get(section_name, [])
+        if values:
+            overrides[field_name] = values
+    return overrides
+
+
+def _markdown_sections(text: str) -> dict[str, list[str]]:
+    sections: dict[str, list[str]] = {}
+    current = ""
+    for raw_line in text.splitlines():
+        line = raw_line.strip()
+        if not line:
+            continue
+        if line.startswith("## "):
+            current = line[3:].strip().lower()
+            sections.setdefault(current, [])
+            continue
+        if not current:
+            continue
+        item = None
+        if line.startswith("- "):
+            item = line[2:].strip()
+        else:
+            match = re.match(r"^\d+[\.)]\s+(.+)$", line)
+            if match:
+                item = match.group(1).strip()
+        if item:
+            sections.setdefault(current, []).append(item)
+    return sections

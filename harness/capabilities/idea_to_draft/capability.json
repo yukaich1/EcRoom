@@ -1,0 +1,65 @@
+{
+  "capability_id": "idea_to_draft",
+  "user_visible_label": "把想法写成稿",
+  "short_description": "把短想法、观点或灵感整理成自然、可继续修改的首稿。",
+  "workflow_hint": "先判断表达目的和读者，再选择一个稳妥角度生成自然首稿。",
+  "trigger": "用户有碎片想法、观点、朋友圈/帖子/短文需求，尚未形成完整文本。",
+  "version": "1.0.0",
+  "package_kind": "initial_creation",
+  "agent_sequence": [
+    "intent_interpreter",
+    "strategist",
+    "draft_writer",
+    "critic_panel"
+  ],
+  "pipeline": [
+    "intake",
+    "interpretation",
+    "planning",
+    "production",
+    "quality_gate",
+    "feedback_bridge",
+    "telemetry"
+  ],
+  "tool_contract": [
+    "memory.search(preference,project)",
+    "naturalness.review"
+  ],
+  "input_contract": [
+    "raw_request",
+    "optional audience",
+    "optional tone",
+    "must_keep",
+    "must_avoid"
+  ],
+  "output_contract": [
+    "primary_draft",
+    "optional_openings",
+    "edit_handles"
+  ],
+  "constraints": [
+    "不默认加平台标签、emoji 或标题党结构。",
+    "输入很短时输出短而完整，不虚胖扩写。"
+  ],
+  "quality_gates": [
+    "intent_fit",
+    "naturalness",
+    "scope_safety",
+    "continuation_ready"
+  ],
+  "entry_examples": [
+    "我有个观点，帮我写成一段自然的帖子。"
+  ],
+  "failure_policy": [
+    "输入不足时生成一个小稿和两个可继续方向。"
+  ],
+  "tags": [
+    "idea",
+    "shortform",
+    "draft"
+  ],
+  "schema_version": "capability_spec.v1",
+  "component": "capabilities/idea_to_draft",
+  "owner": "capability_registry",
+  "rollback_target": "1.0.0"
+}

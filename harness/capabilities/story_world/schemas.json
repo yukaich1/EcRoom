@@ -1,0 +1,24 @@
+{
+  "input_contract": [
+    "raw_request",
+    "characters",
+    "world_rules",
+    "narrative_goal",
+    "must_keep"
+  ],
+  "output_contract": [
+    "story_or_setting_draft",
+    "canon_notes",
+    "continuation_hooks",
+    "edit_handles"
+  ],
+  "quality_gates": [
+    "canon_consistency",
+    "character_motivation",
+    "conflict_clarity",
+    "naturalness"
+  ],
+  "feedback_bridge": {
+    "edit_handles_required": true
+  }
+}

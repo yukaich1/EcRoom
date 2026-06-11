@@ -1,0 +1,67 @@
+{
+  "capability_id": "professional_writer",
+  "user_visible_label": "写职业文本",
+  "short_description": "生成邮件、公告、汇报、方案、申请、邀约等职业场景文本。",
+  "workflow_hint": "先判断关系、目的、风险和语气，再输出可直接使用的版本。",
+  "trigger": "用户要求邮件、汇报、公告、方案、会议纪要、拒绝、道歉或商务沟通。",
+  "version": "1.0.0",
+  "package_kind": "professional",
+  "agent_sequence": [
+    "intent_interpreter",
+    "strategist",
+    "draft_writer",
+    "norm_steward",
+    "critic_panel"
+  ],
+  "pipeline": [
+    "intake",
+    "interpretation",
+    "relationship_modeling",
+    "planning",
+    "production",
+    "quality_gate",
+    "feedback_bridge",
+    "telemetry"
+  ],
+  "tool_contract": [
+    "memory.search(preference,project)",
+    "risk.review"
+  ],
+  "input_contract": [
+    "raw_request",
+    "recipient",
+    "objective",
+    "tone",
+    "required_points"
+  ],
+  "output_contract": [
+    "ready_to_send_text",
+    "optional_variants",
+    "risk_notes"
+  ],
+  "constraints": [
+    "不夸张承诺。",
+    "不输出不合关系的冒犯或过度亲密语气。"
+  ],
+  "quality_gates": [
+    "objective_fit",
+    "tone_fit",
+    "risk_boundary",
+    "action_clarity"
+  ],
+  "entry_examples": [
+    "帮我写一封委婉但明确的拒绝邮件。"
+  ],
+  "failure_policy": [
+    "关系不明时采用礼貌、中性、低风险语气。"
+  ],
+  "tags": [
+    "email",
+    "business",
+    "work"
+  ],
+  "schema_version": "capability_spec.v1",
+  "component": "capabilities/professional_writer",
+  "owner": "capability_registry",
+  "rollback_target": "1.0.0"
+}

@@ -1,6 +1,6 @@
 # Harness 工作区
 
-这个目录是 Evolving Creative Room 的可编辑 harness 基底。
+这个目录是 EcRoom 的可编辑 harness 基底。
 
 它遵循 Agentic Harness Engineering 的核心原则：模型外部的工作系统应该拆成明确、可审阅、可 diff、可回滚的文件，避免藏在黑盒 prompt 或代码分支里。
 

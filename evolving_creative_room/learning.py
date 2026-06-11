@@ -7,6 +7,7 @@ from pathlib import Path
 
 from evolving_creative_room.memory.store import MemoryRecord, MemoryStore
 from evolving_creative_room.models import CreativeState, new_id, utc_now_iso
+from evolving_creative_room.storage import atomic_write_jsonl
 
 
 @dataclass(slots=True)
@@ -66,18 +67,19 @@ class LearningStore:
                 continue
             platforms = _detect_platforms(constraint)
             kind = "platform_rule" if platforms else "project_rule"
+            suggested_scope = "global" if platforms else "project"
             candidates.append(
                 LearningCandidate(
                     session_id=state.session_id,
                     project_id=state.project_id,
                     kind=kind,
                     content=_clean_label(constraint),
-                    suggested_scope="global",
+                    suggested_scope=suggested_scope,
                     reason="来自用户给出的平台要求。" if platforms else "来自用户给出的约束、禁用项或项目设定。",
                     effect=(
                         "设为偏好后，后续涉及该平台时会优先参考这条表达边界。"
                         if platforms
-                        else "设为偏好后，后续类似创作会自动参考这条规则。"
+                        else "保存为项目规则后，后续同项目创作会自动参考这条规则。"
                     ),
                     evidence_ids=[state.session_id],
                     target_object=_target_object(constraint),
@@ -104,6 +106,7 @@ class LearningStore:
 
         saved = []
         for candidate in _merge_candidates(candidates):
+            candidate.content = _compact_learning_content(candidate.content)
             if not candidate.content or not _displayable_candidate(candidate.content):
                 continue
             _score_candidate(candidate)
@@ -111,7 +114,7 @@ class LearningStore:
                 continue
             saved.append(self._upsert(candidate))
         saved.sort(key=lambda item: float(item.get("confidence", 0.0)), reverse=True)
-        return saved[: max(1, min(8, int(limit)))]
+        return saved[: max(1, min(5, int(limit)))]
 
     def list(
         self,
@@ -256,10 +259,7 @@ class LearningStore:
         return [json.loads(line) for line in self.path.read_text(encoding="utf-8").splitlines() if line.strip()]
 
     def _write_all(self, rows: list[dict[str, object]]) -> None:
-        self.path.write_text(
-            "\n".join(json.dumps(item, ensure_ascii=False) for item in rows) + ("\n" if rows else ""),
-            encoding="utf-8",
-        )
+        atomic_write_jsonl(self.path, rows)
 
 
 def _merge_candidates(candidates: list[LearningCandidate]) -> list[LearningCandidate]:
@@ -282,12 +282,15 @@ def _score_candidate(candidate: LearningCandidate) -> None:
     text = candidate.content
     candidate.evidence_strength = 0.75 if candidate.evidence_ids else 0.45
     candidate.reusability = 0.8 if candidate.kind in {"platform_rule", "project_rule"} else 0.65
-    candidate.scope_confidence = 0.85 if candidate.suggested_scope in {"project", "global"} else 0.5
+    candidate.scope_confidence = 0.85 if candidate.suggested_scope == "project" else 0.78 if candidate.suggested_scope == "global" else 0.5
     candidate.user_intent_clarity = 0.95 if _looks_long_term(text) else 0.55
     candidate.interruption_risk = 0.15 if len(text) <= 42 else 0.35
     if _is_ephemeral(text) and not _looks_long_term(text):
         candidate.interruption_risk += 0.4
         candidate.scope_confidence -= 0.25
+    if candidate.suggested_scope == "global" and not (_looks_long_term(text) or candidate.kind == "platform_rule"):
+        candidate.interruption_risk += 0.2
+        candidate.scope_confidence -= 0.2
     candidate.confidence = round(
         candidate.evidence_strength * 0.30
         + candidate.reusability * 0.25
@@ -338,6 +341,29 @@ def _clean_label(text: str) -> str:
     return re.sub(r"\s+", " ", str(text)).strip(" ，,；;：:")
 
 
+def _compact_learning_content(text: str, *, max_length: int = 54) -> str:
+    value = _clean_label(text)
+    value = re.sub(r"^(用户偏好|创作约束|平台规范线索|规范或风险规则|用户反馈)[:：]", "", value).strip()
+    value = re.sub(r"^(请|帮我|需要|希望|要求)(?:[，,：:]\s*)?", "", value).strip()
+    value = re.sub(r"(可以|能不能|是否|然后|就是|这个|那个)", "", value).strip()
+    value = re.sub(r"\s+", " ", value)
+    parts = [part.strip() for part in re.split(r"[。！？；;]\s*", value) if part.strip()]
+    if parts:
+        value = max(parts, key=lambda item: _learning_signal_score(item))
+    if len(value) > max_length:
+        value = value[: max_length - 1].rstrip(" ，,；;：:") + "…"
+    return value
+
+
+def _learning_signal_score(text: str) -> int:
+    score = 0
+    for term in ["以后", "默认", "不要", "保持", "必须", "优先", "平台", "角色", "世界观", "风格", "语气", "禁用"]:
+        if term in text:
+            score += 2
+    score += min(len(text), 60) // 12
+    return score
+
+
 def _looks_long_term(text: str) -> bool:
     return any(term in text for term in ["以后", "长期", "一直", "总是", "记住", "我的风格", "默认", "个人偏好"])
 
@@ -348,7 +374,9 @@ def _is_ephemeral(text: str) -> bool:
 
 def _displayable_candidate(text: str) -> bool:
     value = _clean_label(text)
-    if len(value) < 3:
+    if len(value) < 3 or len(value) > 72:
+        return False
+    if any(term in value for term in ["先写", "这次先", "本次先", "随便", "试一下", "测试"]):
         return False
     if re.fullmatch(r"[\W_]+", value):
         return False

@@ -35,3 +35,37 @@ Norm Steward 在创作团队里承担“规范和风险编辑”的角色。
 ```
 
 如果规则来源不明确、过期或只有低置信度，应该建议用户确认，避免直接阻断创作。
+
+## Evolution Amendment
+
+- 时间：2026-06-07T12:11:16.512482+00:00
+- Manifest：manifest_37b9db096d0e
+- Proposal：chg_a40cd5fb93dd
+- 审批说明：用户在创作助理改进建议中确认应用。
+
+### 证据
+
+- 微博语境：避免蹭无关热搜、虚假信息、过度营销和侵犯权益内容。
+- 叙事语境：角色口吻、世界观事实、剧情时间线应保持一致。
+- 资料库提示：平台规范线索：用户提到“微博”，后续生成应自动召回并遵守该平台的表达习惯和发布边界。
+- 资料库提示：用户自定义规则：不要夸张承诺
+
+### 根因
+
+Norm advice must remain separate from creative preference.
+
+### 新规则
+
+Record platform hard rules, soft conventions, and project rules separately.
+
+### 预期收益
+
+Better traceability and fewer overblocking suggestions.
+
+### 回归风险
+
+More nuanced output may require clearer UI grouping.
+
+### 回滚计划
+
+Revert to the previous harness component version.

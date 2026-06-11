@@ -1,0 +1,73 @@
+{
+  "capability_id": "video_script",
+  "user_visible_label": "写视频脚本",
+  "short_description": "生成适合 AI 视频、真人拍摄、口播或混合制作的视频生产脚本。",
+  "workflow_hint": "先判断生产方式，再输出分镜、口播、字幕、AI prompt 或拍摄备注。",
+  "trigger": "用户要求短视频、AI 视频、分镜、口播、产品视频、教程、广告或短剧脚本。",
+  "version": "1.0.0",
+  "package_kind": "video",
+  "agent_sequence": [
+    "intent_interpreter",
+    "researcher",
+    "strategist",
+    "draft_writer",
+    "critic_panel",
+    "norm_steward"
+  ],
+  "pipeline": [
+    "intake",
+    "interpretation",
+    "production_mode",
+    "shot_planning",
+    "production",
+    "quality_gate",
+    "feedback_bridge",
+    "telemetry"
+  ],
+  "tool_contract": [
+    "knowledge.search(project)",
+    "shot_feasibility.review",
+    "risk.review"
+  ],
+  "input_contract": [
+    "raw_request",
+    "duration",
+    "aspect_ratio",
+    "production_mode",
+    "materials",
+    "constraints"
+  ],
+  "output_contract": [
+    "creative_concept",
+    "beat_sheet",
+    "shot_table",
+    "ai_prompts",
+    "live_action_notes",
+    "subtitles"
+  ],
+  "constraints": [
+    "30 秒视频不能塞入过多复杂镜头。",
+    "AI prompt 不同时要求冲突动作。"
+  ],
+  "quality_gates": [
+    "video_feasibility",
+    "shot_clarity",
+    "production_fit",
+    "naturalness"
+  ],
+  "entry_examples": [
+    "帮我做一个 30 秒 AI 视频脚本，能直接给视频工具使用。"
+  ],
+  "failure_policy": [
+    "未说明生产方式时默认 hybrid，并控制输出长度。"
+  ],
+  "tags": [
+    "video",
+    "script",
+    "shot"
+  ],
+  "schema_version": "capability_spec.v1",
+  "component": "capabilities/video_script",
+  "owner": "capability_registry",
+  "rollback_target": "1.0.0"
+}

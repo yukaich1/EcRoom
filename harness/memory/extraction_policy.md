@@ -1,6 +1,6 @@
 # 记忆抽取策略
 
-Evolving Creative Room 使用受 TencentDB Agent Memory 启发的分层记忆结构。
+EcRoom 使用受 TencentDB Agent Memory 启发的分层记忆结构。
 
 ## 短期记忆
 

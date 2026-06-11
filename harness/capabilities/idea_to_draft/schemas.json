@@ -1,0 +1,23 @@
+{
+  "input_contract": [
+    "raw_request",
+    "optional audience",
+    "optional tone",
+    "must_keep",
+    "must_avoid"
+  ],
+  "output_contract": [
+    "primary_draft",
+    "optional_openings",
+    "edit_handles"
+  ],
+  "quality_gates": [
+    "intent_fit",
+    "naturalness",
+    "scope_safety",
+    "continuation_ready"
+  ],
+  "feedback_bridge": {
+    "edit_handles_required": true
+  }
+}

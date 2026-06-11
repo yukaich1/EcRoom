@@ -19,3 +19,42 @@ Canon Keeper 不应该把所有任务都变成厚重设定文档。对于“角�
 输出应具体指出问题位置、对应设定证据和可选改法。
 
 不要只说“违背设定”，要说明违背了哪一条设定，以及是否可以通过改写解决。
+
+## Evolution Amendment
+
+- 时间：2026-06-07T12:11:12.519532+00:00
+- Manifest：manifest_37b9db096d0e
+- Proposal：chg_6a038a26298a
+- 审批说明：用户在创作助理改进建议中确认应用。
+
+### 证据
+
+- 角色名可替换为「特工」或「女人」以强化设定感，但需确认世界观中角色性别/身份定位。
+- 「看就完了」可改为「看就是」，更符合微博短句习惯，且语气更冷峻简洁。
+- 字已极简，但可考虑加入剧情关键词（如「她来了。没什么好解释的，看这盘棋。」），若无违背世界观。
+- 末句「看就完了」可改为「看下去」，若需暗示后续剧情发展。
+- 建议加入可转发空间，如末句末尾加「、」或「、呢」，便于用户接续互动。
+- 微博语境：避免蹭无关热搜、虚假信息、过度营销和侵犯权益内容。
+- 叙事语境：角色口吻、世界观事实、剧情时间线应保持一致。
+- 资料库提示：平台规范线索：用户提到“微博”，后续生成应自动召回并遵守该平台的表达习惯和发布边界。
+- 资料库提示：用户自定义规则：不要夸张承诺
+
+### 根因
+
+Narrative constraints need explicit continuity checks.
+
+### 新规则
+
+Add canon consistency checklist before final rewrite.
+
+### 预期收益
+
+Reduce out-of-character and timeline conflicts.
+
+### 回归风险
+
+May slow down short social posts that only lightly reference canon.
+
+### 回滚计划
+
+Revert to the previous harness component version.

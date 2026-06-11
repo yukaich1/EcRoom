@@ -8,6 +8,7 @@ from pathlib import Path
 from evolving_creative_room.memory.vector_index import VectorIndex
 from evolving_creative_room.memory.store import _bm25_scores
 from evolving_creative_room.models import KnowledgeRecord, utc_now_iso
+from evolving_creative_room.storage import atomic_write_jsonl
 
 
 class KnowledgeBase:
@@ -111,6 +112,15 @@ class KnowledgeBase:
                     self._index_dict(row)
         return changed
 
+    def rebuild_index(self) -> dict[str, object]:
+        count = 0
+        for record in self._read_all():
+            if not isinstance(record, dict):
+                continue
+            self._index_dict(record)
+            count += 1
+        return {"records_indexed": count, "backend": self.vector.backend, "available": self.vector.available, "error": self.vector.error}
+
     def _append(self, record: KnowledgeRecord) -> None:
         with self.path.open("a", encoding="utf-8") as handle:
             handle.write(json.dumps(asdict(record), ensure_ascii=False) + "\n")
@@ -125,10 +135,7 @@ class KnowledgeBase:
         return records
 
     def _write_all(self, records: list[dict[str, object]]) -> None:
-        self.path.write_text(
-            "\n".join(json.dumps(item, ensure_ascii=False) for item in records) + ("\n" if records else ""),
-            encoding="utf-8",
-        )
+        atomic_write_jsonl(self.path, records)
 
     def _index_record(self, record: KnowledgeRecord) -> None:
         self._index_dict(asdict(record))

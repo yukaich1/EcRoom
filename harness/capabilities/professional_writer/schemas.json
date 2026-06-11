@@ -1,0 +1,23 @@
+{
+  "input_contract": [
+    "raw_request",
+    "recipient",
+    "objective",
+    "tone",
+    "required_points"
+  ],
+  "output_contract": [
+    "ready_to_send_text",
+    "optional_variants",
+    "risk_notes"
+  ],
+  "quality_gates": [
+    "objective_fit",
+    "tone_fit",
+    "risk_boundary",
+    "action_clarity"
+  ],
+  "feedback_bridge": {
+    "edit_handles_required": true
+  }
+}

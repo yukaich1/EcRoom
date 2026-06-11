@@ -5,6 +5,8 @@ from copy import deepcopy
 from pathlib import Path
 from typing import Any
 
+from evolving_creative_room.storage import atomic_write_json
+
 
 DEFAULT_SETTINGS: dict[str, Any] = {
     "profile": {
@@ -118,7 +120,7 @@ class UserSettingsStore:
             if "min_eval_cases" in harness:
                 current_harness["min_eval_cases"] = _bounded_int(harness.get("min_eval_cases"), 1, 20, 3)
 
-        self.path.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+        atomic_write_json(self.path, data)
         return self.public_view()
 
 

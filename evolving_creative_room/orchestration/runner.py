@@ -4,6 +4,7 @@ from pathlib import Path
 import base64
 import binascii
 import json
+import shutil
 from dataclasses import asdict
 import re
 from typing import Any
@@ -18,6 +19,14 @@ from evolving_creative_room.agents import (
     ResearchAgent,
     Strategist,
 )
+from evolving_creative_room.capabilities import (
+    CAPABILITY_ALIASES,
+    capabilities_view,
+    get_capability,
+    load_capability_packages,
+    seed_missing_capability_packages,
+)
+from evolving_creative_room.data_health import WorkspaceDoctor
 from evolving_creative_room.evaluation import DEFAULT_EVAL_CASES, EvaluationStore, compare_eval_runs, new_eval_run, score_state
 from evolving_creative_room.evolution.manifest import HarnessEvolver
 from evolving_creative_room.knowledge import KnowledgeBase
@@ -25,11 +34,13 @@ from evolving_creative_room.learning import LearningStore
 from evolving_creative_room.llm import ChatMessage, LLMClient, LLMError, OpenAICompatibleClient, client_from_env
 from evolving_creative_room.memory.store import MemoryRecord, MemoryStore
 from evolving_creative_room.metrics import MetricStore
+from evolving_creative_room.naturalness import evaluate_naturalness
 from evolving_creative_room.observability import CallLogStore, ObservedLLMClient
 from evolving_creative_room.projects import ProjectStore
 from evolving_creative_room.settings import PROVIDER_DEFAULTS, UserSettingsStore
-from evolving_creative_room.skills import SKILLS, get_skill, write_skill_packages
+from evolving_creative_room.skills import SKILL_ALIASES, get_skill, load_skill_packages, seed_missing_skill_packages
 from evolving_creative_room.sources import import_public_page
+from evolving_creative_room.storage import atomic_write_bytes, atomic_write_json
 from evolving_creative_room.models import AgentRole, CreativeIntent, CreativeState, FeedbackSignal, HumanFeedback, new_id, state_to_dict, utc_now_iso
 
 
@@ -55,7 +66,10 @@ class CreativeRoomRunner:
         self.media_dir = self.workspace / "media"
         self.media_dir.mkdir(parents=True, exist_ok=True)
         self.evolver = HarnessEvolver()
-        self.skill_package_paths = write_skill_packages(self.project_root / "harness" / "skills")
+        self.capability_package_paths = seed_missing_capability_packages(self.project_root / "harness" / "capabilities")
+        self.capabilities = load_capability_packages(self.project_root / "harness" / "capabilities")
+        self.skill_package_paths = seed_missing_skill_packages(self.project_root / "harness" / "skills")
+        self.skills = load_skill_packages(self.project_root / "harness" / "skills")
         self.llm_error: str | None = None
         if llm:
             self.llm = ObservedLLMClient(llm, self.call_logs)
@@ -69,8 +83,11 @@ class CreativeRoomRunner:
         user_preferences: list[str] | None = None,
         feedback_note: str | None = None,
         project_id: str = "default",
+        capability_id: str = "",
     ) -> CreativeState:
         intent = CreativeIntent(raw_request=request, user_preferences=user_preferences or [])
+        if capability_id:
+            intent.project_context["requested_capability_id"] = capability_id
         state = CreativeState(intent=intent, project_id=project_id)
         self.projects.touch(project_id)
         self._apply_skill_context(state)
@@ -87,6 +104,7 @@ class CreativeRoomRunner:
         for agent in agents:
             self._run_agent(state, agent)
 
+        self._maybe_run_quality_repair_pass(state)
         self._run_agent(state, MemoryCuratorAgent())
         self._finish_skill_runs(state, skill_run_started)
 
@@ -107,6 +125,7 @@ class CreativeRoomRunner:
         state = self.memory.load_state(session_id)
         inferred_signal = self._infer_feedback_signal(note, edited_text) if signal == FeedbackSignal.EDIT else signal
         feedback = self._append_feedback(state, inferred_signal, note, edited_text)
+        self._record_failure_signals(state)
         self._absorb_context_signals(state, " ".join([note, edited_text or ""]), evidence_ids=[state.session_id, feedback.feedback_id])
         parent_id = state.drafts[-1].version_id if state.drafts else None
         base_text = state.drafts[-1].content if state.drafts else ""
@@ -131,16 +150,11 @@ class CreativeRoomRunner:
         return state
 
     def finalize(self, state: CreativeState) -> None:
+        self._record_failure_signals(state)
         self.memory.render_short_term_canvas(state)
         self.memory.capture_l0(state)
         self.memory.extract_l1(state)
         self.memory.upsert_l2_scene(state)
-        memory_policy = self._memory_policy()
-        candidates = self.learning.suggest_from_state(
-            state,
-            min_confidence=float(memory_policy.get("min_confidence", 0.35)),
-            limit=int(memory_policy.get("candidate_limit", 3)),
-        )
         self.metrics.record(
             "session_finalized",
             session_id=state.session_id,
@@ -149,27 +163,16 @@ class CreativeRoomRunner:
         )
         if state.drafts:
             self.metrics.record("session_success", session_id=state.session_id, project_id=state.project_id)
-        if candidates:
-            self.metrics.record(
-                "learning_candidate_created",
-                value=float(len(candidates)),
-                session_id=state.session_id,
-                project_id=state.project_id,
-            )
 
         if self._harness_settings().get("auto_propose", True):
             manifest = self.evolver.propose(state)
             manifest.write(self.workspace / "evolution" / f"{manifest.manifest_id}.json")
 
     def latest_manifest(self, session_id: str) -> dict[str, object] | None:
-        manifests = []
-        for path in (self.workspace / "evolution").glob("manifest_*.json"):
-            data = json.loads(path.read_text(encoding="utf-8"))
-            if data.get("session_id") == session_id:
-                manifests.append((path.stat().st_mtime, data))
-        if not manifests:
+        latest = self._latest_manifest_entry(session_id)
+        if not latest:
             return None
-        return sorted(manifests, key=lambda item: item[0], reverse=True)[0][1]
+        return latest[1]
 
     def llm_info(self) -> dict[str, object]:
         if self.llm:
@@ -191,27 +194,39 @@ class CreativeRoomRunner:
         state = self.memory.load_state(session_id)
         canvas_path = self.workspace / "short_term_canvas.mmd"
         session_meta = next((item for item in self.memory.list_sessions(include_completed=True) if item.get("session_id") == session_id), {})
+        completed = bool(session_meta.get("completed"))
+        learning_candidates = self.learning.list(session_id=session_id) if completed else []
+        manifest = self.latest_manifest(session_id)
         return {
             "state": state_to_dict(state),
             "session": session_meta,
-            "manifest": self.latest_manifest(session_id),
+            "manifest": manifest,
             "memory": self.memory.list_records(limit=40, project_id=state.project_id),
-            "learning": {"candidates": self.learning.list(session_id=session_id)},
+            "learning": {"candidates": learning_candidates},
+            "review": {"items": self._review_items(session_id, learning_candidates=learning_candidates, manifest=manifest) if completed else []},
             "workflow_trace": self._workflow_trace(state),
             "agent_events": self._agent_events_view(state),
             "shared_context": self._shared_context_view(state),
             "canvas": canvas_path.read_text(encoding="utf-8") if canvas_path.exists() else "",
         }
 
-    def workflow_preview(self, request: str, preferences: list[str] | None = None, project_id: str = "default") -> dict[str, object]:
+    def workflow_preview(
+        self,
+        request: str,
+        preferences: list[str] | None = None,
+        project_id: str = "default",
+        capability_id: str = "",
+    ) -> dict[str, object]:
         intent = CreativeIntent(raw_request=request, user_preferences=preferences or [])
+        if capability_id:
+            intent.project_context["requested_capability_id"] = capability_id
         state = CreativeState(intent=intent, project_id=project_id)
         self._apply_skill_context(state)
         self.intent_agent.run(state)
         query = " ".join([request, *(preferences or [])])
         platforms = _detect_platforms(query)
         urls = _detect_urls(query)
-        agents = [AgentRole.INTENT_INTERPRETER, AgentRole.RESEARCHER, *[agent.role for agent in self._select_agents(state)], AgentRole.MEMORY_CURATOR]
+        agents = [AgentRole.INTENT_INTERPRETER, AgentRole.RESEARCHER, *[agent.role for agent in self._select_agents(state)]]
         stages = []
         for role in agents:
             stages.append(
@@ -226,10 +241,14 @@ class CreativeRoomRunner:
             "signals": {
                 "platforms": platforms,
                 "urls": urls,
+                "capabilities": state.intent.project_context.get("capabilities", []),
                 "skills": state.intent.project_context.get("skills", []),
                 "constraints": state.intent.constraints,
             },
         }
+
+    def capabilities_view(self) -> dict[str, object]:
+        return {"capabilities": capabilities_view(self.capabilities)}
 
     def project_view(self) -> dict[str, object]:
         return {"projects": self.projects.list()}
@@ -448,7 +467,7 @@ class CreativeRoomRunner:
             raise ValueError("图片不能超过 4MB。")
         media_id = new_id("media")
         path = self.media_dir / f"{media_id}.{extension}"
-        path.write_bytes(content)
+        atomic_write_bytes(path, content)
         return {
             "media_id": media_id,
             "file_path": str(path),
@@ -531,16 +550,86 @@ class CreativeRoomRunner:
             )
         return result
 
+    def accept_review_item(self, session_id: str, item_id: str, *, scope: str = "", reviewer_note: str = "") -> dict[str, object]:
+        kind, target_id = self._parse_review_item_id(item_id)
+        if kind == "learning":
+            candidate = self._find_learning_candidate(target_id, session_id=session_id)
+            source_type = self._review_source_type(candidate)
+            action = self._learning_action_for_review(candidate, scope=scope)
+            result = self.apply_learning(target_id, action)
+            return {
+                "item_id": item_id,
+                "status": "accepted",
+                "source_type": source_type,
+                "action": action,
+                "result": result,
+            }
+        if kind == "workflow":
+            latest = self._latest_ab_for_proposal(target_id)
+            if not latest:
+                self._update_proposal_status(session_id, target_id, "needs_validation")
+                self.metrics.record(
+                    "review_item_needs_validation",
+                    session_id=session_id,
+                    metadata={"proposal_id": target_id},
+                )
+                return {
+                    "item_id": item_id,
+                    "status": "blocked",
+                    "source_type": "assistant_workflow",
+                    "message": "我会先把它作为待验证的改进点保留，证据足够后再应用。",
+                }
+            result = self.apply_evolution(
+                session_id,
+                target_id,
+                reviewer_note=reviewer_note or "用户在本次复盘中允许调整助理工作方式。",
+            )
+            return {
+                "item_id": item_id,
+                "status": "accepted",
+                "source_type": "assistant_workflow",
+                "result": result,
+            }
+        raise ValueError(f"Unknown review item type: {kind}")
+
+    def skip_review_item(self, session_id: str, item_id: str, *, reviewer_note: str = "") -> dict[str, object]:
+        kind, target_id = self._parse_review_item_id(item_id)
+        if kind == "learning":
+            result = self.apply_learning(target_id, "ignore")
+            return {"item_id": item_id, "status": "skipped", "source_type": "memory", "result": result}
+        if kind == "workflow":
+            result = self.ignore_evolution(session_id, target_id, reviewer_note=reviewer_note or "用户在本次复盘中选择跳过。")
+            return {"item_id": item_id, "status": "skipped", "source_type": "assistant_workflow", "result": result}
+        raise ValueError(f"Unknown review item type: {kind}")
+
     def apply_evolution(self, session_id: str, proposal_id: str, reviewer_note: str = "") -> dict[str, object]:
         manifest = self.latest_manifest(session_id)
         if not manifest:
             raise ValueError(f"No manifest for session: {session_id}")
-        return self.evolver.apply_proposal(
+        gate = self._proposal_apply_gate(proposal_id, reviewer_note=reviewer_note)
+        result = self.evolver.apply_proposal(
             project_root=self.project_root,
             manifest=manifest,
             proposal_id=proposal_id,
             reviewer_note=reviewer_note,
         )
+        result["validation_gate"] = gate
+        self._update_proposal_status(session_id, proposal_id, "applied_pending_validation")
+        self.metrics.record(
+            "evolution_proposal_applied",
+            session_id=session_id,
+            metadata={"proposal_id": proposal_id, "gate": gate.get("status", "")},
+        )
+        return result
+
+    def ignore_evolution(self, session_id: str, proposal_id: str, reviewer_note: str = "") -> dict[str, object]:
+        manifest = self._update_proposal_status(session_id, proposal_id, "ignored")
+        self.metrics.record(
+            "evolution_proposal_ignored",
+            session_id=session_id,
+            metadata={"proposal_id": proposal_id, "reviewer_note": reviewer_note},
+        )
+        return {"proposal_id": proposal_id, "status": "ignored", "manifest_id": manifest.get("manifest_id", "")}
 
     def run_evaluation_suite(self) -> dict[str, object]:
         run = self._run_cases(DEFAULT_EVAL_CASES, kind="single")
@@ -556,16 +645,28 @@ class CreativeRoomRunner:
     def run_ab_evaluation(self, session_id: str | None = None, proposal_id: str | None = None) -> dict[str, object]:
         proposal = self._find_proposal(session_id=session_id, proposal_id=proposal_id)
         candidate_note = ""
-        metadata: dict[str, object] = {"mode": "dry_run"}
+        metadata: dict[str, object] = {"mode": "dry_run", "baseline_harness_version": "active", "candidate_harness_version": "candidate"}
+        candidate_skill_root: Path | None = None
         if proposal:
-            candidate_note = "候选 harness 修改：" + str(proposal.get("proposed_change", ""))
+            proposed_change = str(proposal.get("proposed_change") or proposal.get("targeted_fix") or "").strip()
+            if not proposed_change:
+                return {
+                    "error": "invalid_candidate",
+                    "reason": "候选 harness 修改为空，无法进行有效 A/B dry-run。",
+                    "metadata": metadata,
+                }
+            candidate_note = "候选 harness 修改：" + proposed_change
             metadata.update(
                 {
                     "proposal_id": proposal.get("proposal_id", ""),
                     "target_component": proposal.get("target_component", ""),
                     "predicted_metric": proposal.get("predicted_metric", ""),
+                    "proposed_change": proposed_change,
                 }
             )
+            candidate_harness_root = self._materialize_candidate_harness(proposal)
+            candidate_skill_root = candidate_harness_root / "skills"
+            metadata["candidate_harness_path"] = str(candidate_harness_root)
         else:
             candidate_note = "候选 harness 修改：强化资料召回、平台规范检查和用户偏好记忆。"
             metadata["proposal_id"] = ""
@@ -576,13 +677,14 @@ class CreativeRoomRunner:
             kind="ab_candidate",
             extra_preferences=[candidate_note],
             metadata=metadata,
+            skill_root=candidate_skill_root,
         )
         self.evaluations.write(baseline)
         self.evaluations.write(candidate)
         comparison = compare_eval_runs(baseline, candidate)
         comparison["metadata"] = metadata
         path = self.workspace / "evaluations" / f"ab_{candidate.run_id}.json"
-        path.write_text(json.dumps(comparison, ensure_ascii=False, indent=2), encoding="utf-8")
+        atomic_write_json(path, comparison)
         return comparison
 
     def evaluation_view(self) -> dict[str, object]:
@@ -596,6 +698,21 @@ class CreativeRoomRunner:
             "product_metrics": self.metrics.summary(),
             "metric_events": self.metrics.list(limit=120),
         }
+
+    def data_doctor(self) -> dict[str, object]:
+        return WorkspaceDoctor(self.workspace).run()
+
+    def rebuild_indexes(self) -> dict[str, object]:
+        memory = self.memory.rebuild_index()
+        knowledge = self.knowledge.rebuild_index()
+        self.metrics.record(
+            "workspace_indexes_rebuilt",
+            metadata={
+                "memory_records_indexed": memory.get("records_indexed", 0),
+                "knowledge_records_indexed": knowledge.get("records_indexed", 0),
+            },
+        )
+        return {"memory": memory, "knowledge": knowledge, "doctor": self.data_doctor()}
 
     def update_session_meta(
         self,
@@ -615,7 +732,13 @@ class CreativeRoomRunner:
             work_category=work_category,
         )
 
-    def complete_session(self, session_id: str, completed: bool, work_category: str = "") -> dict[str, object]:
+    def complete_session(
+        self,
+        session_id: str,
+        completed: bool,
+        work_category: str = "",
+        revoke_learning_on_reopen: bool = True,
+    ) -> dict[str, object]:
         result = self.update_session_meta(
             session_id,
             completed=completed,
@@ -638,6 +761,13 @@ class CreativeRoomRunner:
                     project_id=state.project_id,
                     metadata={"source": "completion"},
                 )
+        else:
+            if revoke_learning_on_reopen:
+                result["revoked_learning_count"] = self.learning.revoke_for_session(session_id, status="hidden")
+                result["revoked_confirmed_learning_count"] = self.memory.revoke_confirmed_learning_for_session(session_id)
+            else:
+                result["revoked_learning_count"] = 0
+                result["revoked_confirmed_learning_count"] = 0
         return result
 
     def delete_session(self, session_id: str, mode: str = "revoke_memory") -> dict[str, object]:
@@ -685,14 +815,21 @@ class CreativeRoomRunner:
         kind: str,
         extra_preferences: list[str] | None = None,
         metadata: dict[str, object] | None = None,
+        skill_root: Path | None = None,
     ):
         results = []
-        for case in cases:
-            preferences = [*case.preferences, *(extra_preferences or [])]
-            state = self.run_seed_session(case.request, user_preferences=preferences)
-            result = score_state(state, case.expected_signals)
-            result.case_name = case.name
-            results.append(result)
+        original_skills = self.skills
+        if skill_root:
+            self.skills = load_skill_packages(skill_root)
+        try:
+            for case in cases:
+                preferences = [*case.preferences, *(extra_preferences or [])]
+                state = self.run_seed_session(case.request, user_preferences=preferences)
+                result = score_state(state, case.expected_signals)
+                result.case_name = case.name
+                results.append(result)
+        finally:
+            self.skills = original_skills
         return new_eval_run(results, kind=kind, metadata=metadata)
 
     def _find_proposal(self, session_id: str | None = None, proposal_id: str | None = None) -> dict[str, object] | None:
@@ -708,6 +845,335 @@ class CreativeRoomRunner:
                     return proposal
         return None
 
+    def _review_items(
+        self,
+        session_id: str,
+        *,
+        learning_candidates: list[dict[str, object]],
+        manifest: dict[str, object] | None,
+    ) -> list[dict[str, object]]:
+        items: list[dict[str, object]] = []
+        pending_learning = [candidate for candidate in learning_candidates if candidate.get("status") == "candidate"]
+        pending_learning.sort(key=lambda item: float(item.get("confidence", 0.0) or 0.0), reverse=True)
+        for candidate in pending_learning[:3]:
+            if candidate.get("status") != "candidate":
+                continue
+            item = self._learning_review_item(candidate)
+            if item:
+                items.append(item)
+        workflow_items: list[dict[str, object]] = []
+        for proposal in (manifest or {}).get("proposals", []) if isinstance(manifest, dict) else []:
+            if not isinstance(proposal, dict):
+                continue
+            if proposal.get("status", "proposed") not in {"proposed", "pending"}:
+                continue
+            item = self._workflow_review_item(session_id, proposal)
+            if item:
+                workflow_items.append(item)
+        items.extend(workflow_items[:2])
+        return items[:5]
+
+    def _learning_review_item(self, candidate: dict[str, object]) -> dict[str, object] | None:
+        candidate_id = str(candidate.get("candidate_id", "")).strip()
+        content = str(candidate.get("content", "")).strip()
+        if not candidate_id or not content:
+            return None
+        source_type = self._review_source_type(candidate)
+        suggested_scope = self._review_suggested_scope(candidate)
+        if source_type == "memory":
+            title = "记住这个偏好"
+            impact = str(candidate.get("effect") or "以后类似创作会参考这条偏好。")
+            accept_label = "保存这条"
+        else:
+            title = "保存为项目规则"
+            impact = str(candidate.get("effect") or "后续同项目或相关平台创作会参考这条规则。")
+            accept_label = "保存为项目规则"
+        return {
+            "item_id": f"review:learning:{candidate_id}",
+            "session_id": candidate.get("session_id", ""),
+            "source_type": source_type,
+            "title": title,
+            "suggestion": content,
+            "reason": candidate.get("reason", "来自这次创作过程中的稳定信号。"),
+            "evidence_summary": self._candidate_evidence_summary(candidate),
+            "impact": impact,
+            "suggested_scope": suggested_scope,
+            "allowed_scopes": self._review_allowed_scopes(candidate),
+            "confidence": candidate.get("confidence", 0.0),
+            "status": "pending",
+            "accept_label": accept_label,
+            "skip_label": "跳过",
+            "technical_ref": {
+                "candidate_id": candidate_id,
+                "kind": candidate.get("kind", ""),
+                "target_object": candidate.get("target_object", ""),
+                "evidence_ids": candidate.get("evidence_ids", []),
+            },
+        }
+
+    def _workflow_review_item(self, session_id: str, proposal: dict[str, object]) -> dict[str, object] | None:
+        proposal_id = str(proposal.get("proposal_id", "")).strip()
+        if not proposal_id:
+            return None
+        root_cause = str(proposal.get("root_cause", ""))
+        evidence = proposal.get("failure_evidence", [])
+        if "Insufficient feedback evidence" in root_cause:
+            return None
+        if isinstance(evidence, list) and evidence == ["No strong failure pattern yet."]:
+            return None
+        title, suggestion, impact, scope = self._workflow_user_copy(proposal)
+        evidence_count = len(evidence) if isinstance(evidence, list) else 0
+        validation = self._latest_ab_for_proposal(proposal_id)
+        status = "pending"
+        return {
+            "item_id": f"review:workflow:{proposal_id}",
+            "session_id": session_id,
+            "source_type": "assistant_workflow",
+            "title": title,
+            "suggestion": suggestion,
+            "reason": proposal.get("root_cause", "这次创作暴露出一个可复盘的处理方式问题。"),
+            "evidence_summary": f"{evidence_count} 条创作证据" if evidence_count else "证据仍偏少，需要谨慎处理",
+            "impact": impact,
+            "suggested_scope": scope,
+            "allowed_scopes": [scope],
+            "confidence": 0.72 if validation else 0.48,
+            "status": status,
+            "accept_label": "允许这样调整",
+            "skip_label": "跳过",
+            "needs_validation": not bool(validation),
+            "technical_ref": {
+                "proposal_id": proposal_id,
+                "target_component": proposal.get("target_component", ""),
+                "proposed_change": proposal.get("proposed_change") or proposal.get("targeted_fix") or "",
+                "risk": proposal.get("risk", ""),
+                "validation_plan": proposal.get("validation_plan", ""),
+                "rollback_plan": proposal.get("rollback_plan", ""),
+                "predicted_metric": proposal.get("predicted_metric", ""),
+                "evidence_ids": proposal.get("evidence_ids", []),
+            },
+        }
+
+    def _review_source_type(self, candidate: dict[str, object]) -> str:
+        kind = str(candidate.get("kind", ""))
+        if kind in {"project_rule", "platform_rule"}:
+            return "project_rule"
+        return "memory"
+
+    def _review_suggested_scope(self, candidate: dict[str, object]) -> str:
+        kind = str(candidate.get("kind", ""))
+        scope = str(candidate.get("suggested_scope", "") or "project")
+        if kind == "project_rule":
+            return "project"
+        if kind == "platform_rule":
+            return "platform"
+        if scope == "global":
+            return "global"
+        return "project"
+
+    def _review_allowed_scopes(self, candidate: dict[str, object]) -> list[str]:
+        kind = str(candidate.get("kind", ""))
+        if kind == "project_rule":
+            return ["project"]
+        if kind == "platform_rule":
+            return ["platform", "project"]
+        if str(candidate.get("suggested_scope", "")) == "global":
+            return ["global", "project"]
+        return ["project", "global"]
+
+    def _learning_action_for_review(self, candidate: dict[str, object], *, scope: str = "") -> str:
+        requested = scope.strip()
+        if requested in {"global", "project"}:
+            return requested
+        kind = str(candidate.get("kind", ""))
+        if kind == "project_rule":
+            return "project"
+        if kind == "platform_rule":
+            return "global" if self._review_suggested_scope(candidate) == "platform" else "project"
+        return "global" if str(candidate.get("suggested_scope", "")) == "global" else "project"
+
+    def _candidate_evidence_summary(self, candidate: dict[str, object]) -> str:
+        evidence_ids = candidate.get("evidence_ids", [])
+        count = len(evidence_ids) if isinstance(evidence_ids, list) else 0
+        confidence = candidate.get("confidence", 0)
+        try:
+            percent = f"{round(float(confidence) * 100)}%"
+        except (TypeError, ValueError):
+            percent = "待评估"
+        return f"{count or 1} 条本次创作信号，置信度 {percent}"
+
+    def _workflow_user_copy(self, proposal: dict[str, object]) -> tuple[str, str, str, str]:
+        target = str(proposal.get("target_component", ""))
+        change = str(proposal.get("proposed_change") or proposal.get("targeted_fix") or "")
+        lowered = change.lower()
+        if "canon" in target or "canon" in lowered:
+            return (
+                "调整助理工作方式",
+                "以后处理角色或世界观内容时，我会先检查设定一致性，再改成适合发布的版本。",
+                "类似任务会多一次角色口吻、时间线和不可改动设定检查，减少跑偏。",
+                "当前项目和类似叙事任务",
+            )
+        if "norm" in target or "platform" in lowered:
+            return (
+                "调整助理工作方式",
+                "以后处理平台发布内容时，我会把硬规则、平台习惯和项目要求分开判断。",
+                "规范提醒会更精确，减少平台风格覆盖原本创作语气。",
+                "对应平台任务",
+            )
+        if "creative_quality" in target or "naturalness" in lowered or "template" in lowered:
+            return (
+                "调整助理工作方式",
+                "以后我会更主动把过程说明移出正文，只把可用内容留给你。",
+                "发布草稿会更干净，但早期头脑风暴仍会保留必要说明。",
+                "类似文案改稿任务",
+            )
+        return (
+            "调整助理工作方式",
+            user_facing_change(change, str(proposal.get("expected_improvement", ""))),
+            str(proposal.get("risk", "会改变类似任务的处理顺序，需要复核。")),
+            "当前项目或类似创作任务",
+        )
+
+    def _parse_review_item_id(self, item_id: str) -> tuple[str, str]:
+        parts = item_id.split(":", 2)
+        if len(parts) != 3 or parts[0] != "review":
+            raise ValueError(f"Invalid review item id: {item_id}")
+        if parts[1] not in {"learning", "workflow"}:
+            raise ValueError(f"Unknown review item id type: {parts[1]}")
+        return parts[1], parts[2]
+
+    def _find_learning_candidate(self, candidate_id: str, *, session_id: str) -> dict[str, object]:
+        for candidate in self.learning.list(session_id=session_id, limit=200):
+            if candidate.get("candidate_id") == candidate_id:
+                return candidate
+        raise ValueError(f"Learning candidate not found: {candidate_id}")
+
+    def _latest_manifest_entry(self, session_id: str) -> tuple[Path, dict[str, object]] | None:
+        manifests: list[tuple[float, Path, dict[str, object]]] = []
+        for path in (self.workspace / "evolution").glob("manifest_*.json"):
+            data = json.loads(path.read_text(encoding="utf-8"))
+            if data.get("session_id") == session_id:
+                manifests.append((path.stat().st_mtime, path, data))
+        if not manifests:
+            return None
+        _, path, data = sorted(manifests, key=lambda item: item[0], reverse=True)[0]
+        return path, data
+
+    def _update_proposal_status(self, session_id: str, proposal_id: str, status: str) -> dict[str, object]:
+        entry = self._latest_manifest_entry(session_id)
+        if not entry:
+            raise ValueError(f"No manifest for session: {session_id}")
+        path, manifest = entry
+        proposals = manifest.get("proposals", [])
+        if not isinstance(proposals, list):
+            raise ValueError("Manifest proposals are invalid.")
+        for proposal in proposals:
+            if isinstance(proposal, dict) and proposal.get("proposal_id") == proposal_id:
+                proposal["status"] = status
+                proposal["reviewed_at"] = utc_now_iso()
+                atomic_write_json(path, manifest)
+                return manifest
+        raise ValueError(f"Proposal not found: {proposal_id}")
+
+    def _proposal_apply_gate(self, proposal_id: str, *, reviewer_note: str = "") -> dict[str, object]:
+        latest = self._latest_ab_for_proposal(proposal_id)
+        if not latest:
+            if reviewer_note.strip():
+                return {
+                    "status": "manual_review_required",
+                    "reason": "未找到 A/B 结果；本次依赖人工说明应用，后续仍需验证。",
+                }
+            raise ValueError("Applying an evolution proposal requires A/B evaluation or reviewer note.")
+        readiness = str(latest.get("readiness") or latest.get("decision") or "")
+        if readiness == "blocked" and "override" not in reviewer_note.lower() and "强制" not in reviewer_note:
+            raise ValueError("A/B gate blocked this proposal; add an explicit override reviewer note to apply.")
+        return {
+            "status": readiness or "needs_review",
+            "reason": "; ".join(str(item) for item in latest.get("readiness_reasons", []) or []),
+            "ab_result": str(latest.get("candidate_run_id", "")),
+        }
+
+    def _latest_ab_for_proposal(self, proposal_id: str) -> dict[str, object] | None:
+        matches = []
+        for path in (self.workspace / "evaluations").glob("ab_*.json"):
+            try:
+                data = json.loads(path.read_text(encoding="utf-8"))
+            except json.JSONDecodeError:
+                continue
+            metadata = data.get("metadata", {})
+            if isinstance(metadata, dict) and metadata.get("proposal_id") == proposal_id:
+                matches.append((path.stat().st_mtime, data))
+        if not matches:
+            return None
+        return sorted(matches, key=lambda item: item[0], reverse=True)[0][1]
+
+    def _maybe_run_quality_repair_pass(self, state: CreativeState) -> bool:
+        if state.intent.project_context.get("quality_repair_done"):
+            return False
+        if not state.drafts:
+            return False
+        self._record_failure_signals(state)
+        profile = evaluate_naturalness(
+            state.drafts[-1].content,
+            request=state.intent.raw_request,
+            feedback=[item.note for item in state.human_feedback if item.note],
+            platforms=_detect_platforms(state.intent.raw_request),
+        )
+        repair_signals = {"over_explained", "template_style", "generic_language", "feedback_target_missed", "platform_overfit"}
+        failures = {item.failure_type for item in state.failure_signals}
+        if profile.score >= 0.78 and not failures.intersection(repair_signals):
+            return False
+        state.intent.project_context["quality_repair_done"] = True
+        state.add_event(
+            AgentRole.ORCHESTRATOR,
+            "running",
+            "质量返修",
+            "评审发现自然度或反馈响应风险，触发一次受控返修。",
+            input_refs=[state.drafts[-1].version_id],
+            failure_signal=",".join(sorted(failures.intersection(repair_signals))) or ",".join(profile.signals),
+        )
+        state.add_message(AgentRole.ORCHESTRATOR, "Quality repair pass: editor -> critic.")
+        self._run_agent(state, EditorAgent(self.llm))
+        self._run_agent(state, CriticPanel(self.llm))
+        if _detect_platforms(state.intent.raw_request) or any(term in state.intent.raw_request for term in ["角色", "世界观", "剧情", "canon"]):
+            self._run_agent(state, NormSteward())
+        self._record_failure_signals(state)
+        state.add_event(
+            AgentRole.ORCHESTRATOR,
+            "completed",
+            "质量返修",
+            "一次受控返修已完成；如仍有问题，只记录信号，不继续循环。",
+            output_refs=[state.drafts[-1].version_id],
+        )
+        self.metrics.record(
+            "quality_repair_pass",
+            session_id=state.session_id,
+            project_id=state.project_id,
+            metadata={"naturalness_score": profile.score, "signals": profile.signals},
+        )
+        return True
+
+    def _materialize_candidate_harness(self, proposal: dict[str, object]) -> Path:
+        proposal_id = str(proposal.get("proposal_id") or new_id("candidate"))
+        candidate_root = self.workspace / "evaluations" / "candidates" / proposal_id
+        candidate_project = candidate_root / "project"
+        candidate_harness = candidate_project / "harness"
+        if candidate_root.exists():
+            shutil.rmtree(candidate_root)
+        candidate_harness.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copytree(self.project_root / "harness", candidate_harness)
+        manifest = {
+            "manifest_id": f"dry_{proposal_id}",
+            "session_id": str(proposal.get("session_id", "")),
+            "proposals": [proposal],
+        }
+        self.evolver.apply_proposal(
+            project_root=candidate_project,
+            manifest=manifest,
+            proposal_id=proposal_id,
+            reviewer_note="A/B dry-run candidate copy.",
+        )
+        return candidate_harness
+
     def _read_collected_assets(self, project_id: str | None = None) -> list[dict[str, object]]:
         if not self.collected_assets_path.exists():
             return []
@@ -718,7 +1184,7 @@ class CreativeRoomRunner:
         return assets
 
     def _write_collected_assets(self, assets: list[dict[str, object]]) -> None:
-        self.collected_assets_path.write_text(json.dumps(assets, ensure_ascii=False, indent=2), encoding="utf-8")
+        atomic_write_json(self.collected_assets_path, assets)
 
     def _work_asset(self, work_id: str) -> dict[str, object]:
         try:
@@ -739,7 +1205,7 @@ class CreativeRoomRunner:
         return sorted(posts, key=lambda item: str(item.get("updated_at") or item.get("published_at") or ""), reverse=True)
 
     def _write_published_posts(self, posts: list[dict[str, object]]) -> None:
-        self.published_posts_path.write_text(json.dumps(posts, ensure_ascii=False, indent=2), encoding="utf-8")
+        atomic_write_json(self.published_posts_path, posts)
 
     def _append_feedback(
         self,
@@ -853,26 +1319,63 @@ class CreativeRoomRunner:
             )
 
     def _apply_skill_context(self, state: CreativeState) -> None:
-        skill_ids = []
+        requested_skills = []
+        requested = state.intent.project_context.get("requested_capability_id")
+        if requested:
+            package = self._get_capability(str(requested))
+            if package:
+                requested_skills.append(package)
+        requested_list = state.intent.project_context.get("requested_capabilities", [])
+        if isinstance(requested_list, list):
+            for raw in requested_list:
+                package = self._get_capability(str(raw))
+                if package:
+                    requested_skills.append(package)
         for preference in state.intent.user_preferences:
-            match = re.search(r"使用技能[:：]\s*([a-zA-Z0-9_\-\u4e00-\u9fff]+)", preference)
-            if not match:
+            capability_match = re.search(r"(?:使用能力包|开始方式)[:：]\s*([a-zA-Z0-9_\-\u4e00-\u9fff]+)", preference)
+            skill_match = re.search(r"使用技能[:：]\s*([a-zA-Z0-9_\-\u4e00-\u9fff]+)", preference)
+            if capability_match:
+                raw = capability_match.group(1).strip()
+                skill = self._get_capability(raw)
+            elif skill_match:
+                raw = skill_match.group(1).strip()
+                skill = self._get_legacy_skill(raw) or next((item for item in self.skills.values() if item.name == raw), None)
+            else:
                 continue
-            raw = match.group(1).strip()
-            skill = get_skill(raw) or next((item for item in SKILLS.values() if item.name == raw), None)
             if skill:
-                skill_ids.append(skill.skill_id)
-                if skill.skill_id not in state.intent.project_context.setdefault("skills", []):
-                    state.intent.project_context["skills"].append(skill.skill_id)
+                requested_skills.append(skill)
+        skill_plan = self._compose_skill_plan(requested_skills)
+        for skill in skill_plan["active"]:
+            is_capability = bool(getattr(skill, "capability_id", ""))
+            if is_capability and skill.skill_id not in state.intent.project_context.setdefault("capabilities", []):
+                state.intent.project_context["capabilities"].append(skill.skill_id)
+            if skill.skill_id not in state.intent.project_context.setdefault("skills", []):
+                state.intent.project_context["skills"].append(skill.skill_id)
+            fact_prefix = "能力包" if is_capability else "技能包"
+            detail_prefix = "能力包" if is_capability else "技能"
+            if f"{fact_prefix}：{skill.name} {skill.version} - {skill.workflow_hint}" not in state.facts:
                 state.intent.constraints.extend(item for item in skill.constraints if item not in state.intent.constraints)
                 state.intent.evaluation_criteria.extend(item for item in skill.evaluation if item not in state.intent.evaluation_criteria)
-                state.facts.append(f"技能包：{skill.name} {skill.version} - {skill.workflow_hint}")
-                state.facts.append("技能触发：" + skill.trigger)
-                state.facts.append("技能输入规格：" + "；".join(skill.input_contract))
-                state.facts.append("技能流程：" + " -> ".join(skill.workflow_steps))
-                state.facts.append("技能工具契约：" + "；".join(skill.tool_contract or ["无需外部工具"]))
-                state.facts.append("技能输出契约：" + "；".join(skill.output_contract))
-                state.facts.append("技能失败处理：" + "；".join(skill.failure_policy or ["按通用创作流程处理"]))
+                state.facts.append(f"{fact_prefix}：{skill.name} {skill.version} - {skill.workflow_hint}")
+                state.facts.append(f"{detail_prefix}触发：" + skill.trigger)
+                state.facts.append(f"{detail_prefix}输入规格：" + "；".join(skill.input_contract))
+                state.facts.append(f"{detail_prefix}流程：" + " -> ".join(skill.workflow_steps))
+                state.facts.append(f"{detail_prefix}工具契约：" + "；".join(skill.tool_contract or ["无需外部工具"]))
+                state.facts.append(f"{detail_prefix}输出契约：" + "；".join(skill.output_contract))
+                state.facts.append(f"{detail_prefix}失败处理：" + "；".join(skill.failure_policy or ["按通用创作流程处理"]))
+                if is_capability:
+                    state.intent.project_context.setdefault("capability_workflows", {})[skill.skill_id] = {
+                        "name": skill.name,
+                        "version": skill.version,
+                        "package_kind": skill.package_kind,
+                        "agent_sequence": skill.agent_sequence,
+                        "workflow_steps": skill.workflow_steps,
+                        "tool_contract": skill.tool_contract,
+                        "input_contract": skill.input_contract,
+                        "output_contract": skill.output_contract,
+                        "examples": skill.examples,
+                        "failure_policy": skill.failure_policy,
+                    }
                 state.intent.project_context.setdefault("skill_workflows", {})[skill.skill_id] = {
                     "name": skill.name,
                     "version": skill.version,
@@ -885,8 +1388,75 @@ class CreativeRoomRunner:
                     "examples": skill.examples,
                     "failure_policy": skill.failure_policy,
                 }
-        if skill_ids:
-            state.add_message(AgentRole.ORCHESTRATOR, "Skills: " + ", ".join(skill_ids))
+        if skill_plan["active"]:
+            state.intent.project_context["capability_plan"] = {
+                "primary": skill_plan["active"][0].skill_id,
+                "supporting": [skill.skill_id for skill in skill_plan["active"][1:]],
+                "suppressed": skill_plan["suppressed"],
+                "notes": skill_plan["notes"],
+            }
+            state.intent.project_context["skill_plan"] = {
+                "primary": skill_plan["active"][0].skill_id,
+                "supporting": [skill.skill_id for skill in skill_plan["active"][1:]],
+                "suppressed": skill_plan["suppressed"],
+                "notes": skill_plan["notes"],
+            }
+            message = "Capabilities: " + ", ".join(skill.skill_id for skill in skill_plan["active"])
+            if skill_plan["suppressed"]:
+                message += " | suppressed: " + ", ".join(skill_plan["suppressed"])
+            state.add_message(AgentRole.ORCHESTRATOR, message)
+
+    def _compose_skill_plan(self, requested_skills: list[object]) -> dict[str, object]:
+        unique = []
+        seen: set[str] = set()
+        for skill in requested_skills:
+            skill_id = getattr(skill, "skill_id", "")
+            if not skill_id or skill_id in seen:
+                continue
+            seen.add(skill_id)
+            unique.append(skill)
+        if not unique:
+            return {"active": [], "suppressed": [], "notes": []}
+
+        priority = {
+            "video_script": 100,
+            "knowledge_grounded": 95,
+            "story_world": 90,
+            "professional_writer": 85,
+            "longform_builder": 80,
+            "idea_to_draft": 60,
+            "revision_studio": 55,
+            "publish_ready": 50,
+            "narrative_canon": 50,
+            "source_grounded": 50,
+            "variant_lab": 45,
+            "creative_brief": 40,
+        }
+        unique.sort(key=lambda skill: priority.get(getattr(skill, "skill_id", ""), 50), reverse=True)
+
+        active = []
+        suppressed: list[str] = []
+        notes: list[str] = []
+        active_ids: set[str] = set()
+        for skill in unique:
+            skill_id = getattr(skill, "skill_id", "")
+            if skill_id in {"creative_brief", "idea_to_draft"} and active:
+                suppressed.append(skill_id)
+                notes.append("idea_to_draft suppressed because a concrete production capability was selected.")
+                continue
+            if skill_id == "variant_lab" and "revision_studio" in active_ids:
+                suppressed.append(skill_id)
+                notes.append("variant_lab suppressed during direct revision to avoid drifting away from user feedback.")
+                continue
+            active.append(skill)
+            active_ids.add(skill_id)
+
+        if len(active) > 3:
+            for skill in active[3:]:
+                suppressed.append(getattr(skill, "skill_id", ""))
+            notes.append("Only the top three compatible skills are active to keep workflow readable.")
+            active = active[:3]
+        return {"active": active, "suppressed": suppressed, "notes": notes}
 
     def _infer_feedback_signal(self, note: str, edited_text: str | None = None) -> FeedbackSignal:
         text = f"{note} {edited_text or ''}"
@@ -895,6 +1465,91 @@ class CreativeRoomRunner:
         if any(term in text for term in ["方向不对", "重来", "完全不对", "不要这个方向"]):
             return FeedbackSignal.REJECT
         return FeedbackSignal.EDIT
+
+    def _record_failure_signals(self, state: CreativeState) -> None:
+        latest_draft_id = state.drafts[-1].version_id if state.drafts else ""
+        skills = state.intent.project_context.get("skills", [])
+        skill_id = str(skills[0]) if isinstance(skills, list) and skills else ""
+        if state.drafts:
+            profile = evaluate_naturalness(
+                state.drafts[-1].content,
+                request=state.intent.raw_request,
+                feedback=[item.note for item in state.human_feedback if item.note],
+                platforms=_detect_platforms(state.intent.raw_request),
+            )
+            signal_components = {
+                "template_style": ("harness/agents/draft_writer.md", AgentRole.DRAFT_WRITER.value),
+                "over_explained": ("harness/agents/draft_writer.md", AgentRole.DRAFT_WRITER.value),
+                "repetitive_rhythm": ("harness/skills/revision_studio/workflow.md", AgentRole.EDITOR.value),
+                "feedback_target_missed": ("harness/skills/revision_studio/workflow.md", AgentRole.EDITOR.value),
+                "platform_overfit": ("harness/skills/publish_ready/workflow.md", AgentRole.NORM_STEWARD.value),
+                "generic_language": ("harness/agents/draft_writer.md", AgentRole.DRAFT_WRITER.value),
+            }
+            for index, signal in enumerate(profile.signals):
+                component, agent_role = signal_components.get(signal, ("harness/rubrics/creative_quality.md", AgentRole.CRITIC.value))
+                evidence = profile.evidence[index] if index < len(profile.evidence) else "; ".join(profile.notes)
+                state.add_failure_signal(
+                    signal,
+                    evidence,
+                    draft_version_id=latest_draft_id,
+                    skill_id=skill_id,
+                    agent_role=agent_role,
+                    component=component,
+                    severity="high" if profile.score < 0.65 else "medium",
+                )
+        for feedback in state.human_feedback:
+            text = " ".join([feedback.note or "", feedback.edited_text or ""]).strip()
+            if not text:
+                continue
+            if any(term in text for term in ["太模板", "AI 味", "AI文案", "不像人", "模板感"]):
+                state.add_failure_signal(
+                    "template_style",
+                    text,
+                    draft_version_id=feedback.target_id or latest_draft_id,
+                    skill_id=skill_id,
+                    agent_role=AgentRole.DRAFT_WRITER.value,
+                    component="harness/agents/draft_writer.md",
+                )
+            if any(term in text for term in ["第二段", "没改", "没有按", "没按照", "没回应"]):
+                state.add_failure_signal(
+                    "feedback_target_missed",
+                    text,
+                    draft_version_id=feedback.target_id or latest_draft_id,
+                    skill_id=skill_id or "revision_studio",
+                    agent_role=AgentRole.EDITOR.value,
+                    component="harness/skills/revision_studio/workflow.md",
+                )
+            if any(platform in text for platform in ["微博", "小红书", "公众号"]) and any(term in text for term in ["不像", "不对", "太硬", "硬广"]):
+                state.add_failure_signal(
+                    "platform_overfit",
+                    text,
+                    draft_version_id=feedback.target_id or latest_draft_id,
+                    skill_id=skill_id or "publish_ready",
+                    agent_role=AgentRole.NORM_STEWARD.value,
+                    component="harness/skills/publish_ready/workflow.md",
+                )
+        for comment in state.comments:
+            text = comment.comment
+            if comment.severity == "norm" and any(term in text for term in ["通用规范", "泛", "规则"]):
+                state.add_failure_signal(
+                    "norm_generic",
+                    text,
+                    draft_version_id=comment.target_id,
+                    skill_id=skill_id,
+                    agent_role=AgentRole.NORM_STEWARD.value,
+                    component="harness/agents/norm_steward.md",
+                    severity="low",
+                )
+            if any(term in text for term in ["角色", "世界观", "时间线", "canon"]):
+                state.add_failure_signal(
+                    "canon_conflict",
+                    text,
+                    draft_version_id=comment.target_id,
+                    skill_id=skill_id or "narrative_canon",
+                    agent_role=AgentRole.CANON_KEEPER.value,
+                    component="harness/agents/canon_keeper.md",
+                    severity="low",
+                )
 
     def _absorb_context_signals(self, state: CreativeState, text: str, evidence_ids: list[str]) -> None:
         if not text.strip():
@@ -929,11 +1584,11 @@ class CreativeRoomRunner:
                 state.facts.append(content)
 
     def _select_agents(self, state: CreativeState) -> list[object]:
-        skill_ids = state.intent.project_context.get("skills", [])
+        skill_ids = state.intent.project_context.get("capabilities") or state.intent.project_context.get("skills", [])
         skill_tags = []
         if isinstance(skill_ids, list):
             for skill_id in skill_ids:
-                skill = get_skill(str(skill_id))
+                skill = self._get_skill(str(skill_id))
                 if skill:
                     skill_tags.extend(skill.tags)
         agents: list[object] = [Strategist(self.llm)]
@@ -945,6 +1600,22 @@ class CreativeRoomRunner:
         if needs_norm or state.facts:
             agents.append(NormSteward())
         return agents
+
+    def _get_skill(self, skill_id: str):
+        key = str(skill_id).strip()
+        return self._get_legacy_skill(key) or self._get_capability(key)
+
+    def _get_capability(self, capability_id: str):
+        key = str(capability_id).strip()
+        alias = CAPABILITY_ALIASES.get(key, "")
+        if key in self.capabilities or alias:
+            return self.capabilities.get(key) or (self.capabilities.get(alias) if alias else None) or get_capability(key)
+        return next((item for item in self.capabilities.values() if item.name == key), None)
+
+    def _get_legacy_skill(self, skill_id: str):
+        key = str(skill_id).strip()
+        alias = SKILL_ALIASES.get(key, "")
+        return self.skills.get(key) or (self.skills.get(alias) if alias else None) or get_skill(key)
 
     def _workflow_trace(self, state: CreativeState) -> list[dict[str, object]]:
         return [
@@ -1019,7 +1690,7 @@ class CreativeRoomRunner:
             return []
         started = []
         for skill_id in skill_ids:
-            skill = get_skill(str(skill_id))
+            skill = self._get_skill(str(skill_id))
             if not skill:
                 continue
             record = {
@@ -1046,6 +1717,7 @@ class CreativeRoomRunner:
             for event in state.agent_events
             if event.failure_signal and event.created_at >= str(runs[0].get("created_at", ""))
         ]
+        failure_signals.extend(item.failure_type for item in state.failure_signals if item.failure_type not in failure_signals)
         contract_scores = _skill_contract_scores(state)
         for record in runs:
             record.update(
@@ -1207,6 +1879,8 @@ def _agent_stage_detail(role: AgentRole, *, platforms: list[str], urls: list[str
 def _extract_user_preferences(text: str) -> list[str]:
     results: list[str] = []
     for clause in _split_signal_clauses(text):
+        if _is_skill_instruction(clause):
+            continue
         if _is_ephemeral_clause(clause) and not _looks_long_term_clause(clause):
             continue
         if not _has_preference_signal(clause):
@@ -1220,6 +1894,8 @@ def _extract_user_preferences(text: str) -> list[str]:
 def _extract_user_rules(text: str) -> list[str]:
     results: list[str] = []
     for clause in _split_signal_clauses(text):
+        if _is_skill_instruction(clause):
+            continue
         if _is_ephemeral_clause(clause) and not _looks_long_term_clause(clause):
             continue
         if not _has_rule_signal(clause):
@@ -1254,6 +1930,10 @@ def _has_preference_signal(clause: str) -> bool:
 def _has_rule_signal(clause: str) -> bool:
     rule_terms = ["规则", "规范", "要求", "限制", "边界", "必须", "禁止", "禁用", "避免", "不能", "不要", "别"]
     return any(term in clause for term in rule_terms)
+
+
+def _is_skill_instruction(clause: str) -> bool:
+    return bool(re.search(r"使用技能[:：]\s*[\w\-\u4e00-\u9fff]+", clause))
 
 
 def _is_ephemeral_clause(clause: str) -> bool:
@@ -1354,7 +2034,7 @@ def _iteration_prompt(state: CreativeState, final_content: str) -> str:
 
 
 def default_publish_tags() -> list[str]:
-    return ["角色", "世界观", "剧情", "社媒", "小红书", "微博", "公众号", "活动", "游戏", "品牌", "改稿", "标题"]
+    return []
 
 
 def normalize_publish_tags(value: object) -> list[str]:
@@ -1378,6 +2058,13 @@ def normalize_publish_tags(value: object) -> list[str]:
         if len(tags) >= 12:
             break
     return tags
+
+
+def user_facing_change(change: str, improvement: str = "") -> str:
+    pieces = [piece.strip(" 。") for piece in [change, improvement] if piece and piece.strip()]
+    if pieces:
+        return "。".join(pieces) + "。"
+    return "以后遇到类似情况时，我会先检查这次暴露的问题，再继续生成或改稿。"
 
 
 def _clean_title(value: str) -> str:

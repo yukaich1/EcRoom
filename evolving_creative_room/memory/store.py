@@ -9,6 +9,7 @@ from typing import Iterable
 
 from evolving_creative_room.models import CreativeState, new_id, state_from_dict, state_to_dict, utc_now_iso
 from evolving_creative_room.memory.vector_index import VectorIndex
+from evolving_creative_room.storage import atomic_write_json, atomic_write_jsonl, atomic_write_text
 
 
 @dataclass(slots=True)
@@ -50,10 +51,7 @@ class MemoryStore:
 
     def save_state(self, state: CreativeState) -> Path:
         evidence_path = self.refs_dir / f"{state.session_id}.json"
-        evidence_path.write_text(
-            json.dumps(state_to_dict(state), ensure_ascii=False, indent=2),
-            encoding="utf-8",
-        )
+        atomic_write_json(evidence_path, state_to_dict(state))
         self._touch_session_meta(state.session_id, state.intent.raw_request)
         return evidence_path
 
@@ -276,6 +274,28 @@ class MemoryStore:
         ranked = sorted(by_id.values(), key=lambda item: item[0], reverse=True)
         return [record for _, record in ranked[:limit]]
 
+    def rebuild_index(self) -> dict[str, object]:
+        count = 0
+        for record in self.list_records(limit=100000, include_rejected=True):
+            try:
+                self._index_record(
+                    MemoryRecord(
+                        layer=str(record.get("layer", "L1")),
+                        content=str(record.get("content", "")),
+                        project_id=str(record.get("project_id", "default")),
+                        evidence_ids=[str(item) for item in record.get("evidence_ids", []) or []],
+                        tags=[str(item) for item in record.get("tags", []) or []],
+                        status=str(record.get("status", "active")),
+                        confidence=float(record.get("confidence", 0.7) or 0.7),
+                        record_id=str(record.get("record_id", "")) or new_id("mem"),
+                        created_at=str(record.get("created_at", utc_now_iso())),
+                    )
+                )
+                count += 1
+            except (TypeError, ValueError):
+                continue
+        return {"records_indexed": count, "backend": self.vector.backend, "available": self.vector.available, "error": self.vector.error}
+
     def review_record(self, record_id: str, status: str) -> bool:
         changed = False
         for path in self.records_dir.glob("L*.jsonl"):
@@ -289,10 +309,7 @@ class MemoryStore:
                     changed = True
                 rows.append(data)
             if changed:
-                path.write_text(
-                    "\n".join(json.dumps(item, ensure_ascii=False) for item in rows) + ("\n" if rows else ""),
-                    encoding="utf-8",
-                )
+                atomic_write_jsonl(path, rows)
         return changed
 
     def revoke_records_for_session(self, session_id: str, *, status: str = "revoked", include_confirmed: bool = False) -> int:
@@ -317,10 +334,35 @@ class MemoryStore:
                     changed_path = True
                 rows.append(data)
             if changed_path:
-                path.write_text(
-                    "\n".join(json.dumps(item, ensure_ascii=False) for item in rows) + ("\n" if rows else ""),
-                    encoding="utf-8",
-                )
+                atomic_write_jsonl(path, rows)
+        return changed_count
+
+    def revoke_confirmed_learning_for_session(self, session_id: str, *, status: str = "revoked") -> int:
+        changed_count = 0
+        for path in [self.records_dir / "L2.jsonl", self.records_dir / "L3.jsonl"]:
+            if not path.exists():
+                continue
+            rows = []
+            changed_path = False
+            for line in path.read_text(encoding="utf-8").splitlines():
+                if not line.strip():
+                    continue
+                data = json.loads(line)
+                evidence = [str(item) for item in data.get("evidence_ids", []) or []]
+                tags = [str(item) for item in data.get("tags", []) or []]
+                if (
+                    session_id in evidence
+                    and "confirmed" in tags
+                    and data.get("status", "active") not in {"rejected", "revoked", "deleted"}
+                ):
+                    data["status"] = status
+                    data["revoked_by_session"] = session_id
+                    data["updated_at"] = utc_now_iso()
+                    changed_count += 1
+                    changed_path = True
+                rows.append(data)
+            if changed_path:
+                atomic_write_jsonl(path, rows)
         return changed_count
 
     def list_sessions(self, *, include_completed: bool = False) -> list[dict[str, object]]:
@@ -452,7 +494,7 @@ class MemoryStore:
             ]
         )
         canvas_path = self.root / "short_term_canvas.mmd"
-        canvas_path.write_text(body, encoding="utf-8")
+        atomic_write_text(canvas_path, body)
         return body
 
     def _session_path(self, session_id: str) -> Path:
@@ -480,7 +522,7 @@ class MemoryStore:
         return data if isinstance(data, dict) else {}
 
     def _write_session_meta(self, meta: dict[str, dict[str, object]]) -> None:
-        self.sessions_meta_path.write_text(json.dumps(meta, ensure_ascii=False, indent=2), encoding="utf-8")
+        atomic_write_json(self.sessions_meta_path, meta)
 
     def _index_record(self, record: MemoryRecord) -> None:
         self.vector.upsert(

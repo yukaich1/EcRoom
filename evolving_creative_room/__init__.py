@@ -1,4 +1,4 @@
-"""Evolving Creative Room core package."""
+"""EcRoom core package."""
 
 from evolving_creative_room.models import CreativeIntent, CreativeState
 

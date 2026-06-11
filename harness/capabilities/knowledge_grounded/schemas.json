@@ -1,0 +1,23 @@
+{
+  "input_contract": [
+    "raw_request",
+    "sources",
+    "target_output",
+    "source_boundary"
+  ],
+  "output_contract": [
+    "source_summary",
+    "grounded_draft",
+    "missing_info",
+    "risk_notes"
+  ],
+  "quality_gates": [
+    "evidence_use",
+    "fact_boundary",
+    "critical_fact_errors",
+    "naturalness"
+  ],
+  "feedback_bridge": {
+    "edit_handles_required": true
+  }
+}

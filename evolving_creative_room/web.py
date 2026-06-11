@@ -5,7 +5,7 @@ import json
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from urllib.parse import parse_qs, urlparse
+from urllib.parse import parse_qs, unquote, urlparse
 
 from evolving_creative_room.models import FeedbackSignal
 from evolving_creative_room.orchestration import CreativeRoomRunner
@@ -60,6 +60,9 @@ class CreativeRoomWebHandler(BaseHTTPRequestHandler):
         if path == "/api/config":
             self._json({"llm": self.runner.llm_info()})
             return
+        if path == "/api/capabilities":
+            self._json(self.runner.capabilities_view())
+            return
         if path == "/api/settings":
             self._json(self.runner.settings_view())
             return
@@ -87,6 +90,9 @@ class CreativeRoomWebHandler(BaseHTTPRequestHandler):
         if path == "/api/observability":
             self._json(self.runner.observability_view())
             return
+        if path == "/api/data/doctor":
+            self._json(self.runner.data_doctor())
+            return
         if path.startswith("/api/session/"):
             session_id = path.rsplit("/", 1)[-1]
             self._json(self.runner.session_view(session_id))
@@ -104,7 +110,8 @@ class CreativeRoomWebHandler(BaseHTTPRequestHandler):
                     return
                 preferences = _split_lines(str(payload.get("preferences", "")))
                 project_id = str(payload.get("project_id", "default")).strip() or "default"
-                state = self.runner.run_seed_session(request, user_preferences=preferences, project_id=project_id)
+                capability_id = str(payload.get("capability_id", "")).strip()
+                state = self.runner.run_seed_session(request, user_preferences=preferences, project_id=project_id, capability_id=capability_id)
                 self._json(self.runner.session_view(state.session_id), HTTPStatus.CREATED)
                 return
             if path == "/api/workflow/preview":
@@ -112,7 +119,8 @@ class CreativeRoomWebHandler(BaseHTTPRequestHandler):
                 request = str(payload.get("request", "")).strip()
                 preferences = _split_lines(str(payload.get("preferences", "")))
                 project_id = str(payload.get("project_id", "default")).strip() or "default"
-                self._json(self.runner.workflow_preview(request, preferences=preferences, project_id=project_id))
+                capability_id = str(payload.get("capability_id", "")).strip()
+                self._json(self.runner.workflow_preview(request, preferences=preferences, project_id=project_id, capability_id=capability_id))
                 return
             self._do_post_inner(path)
         except (FileNotFoundError, ValueError) as exc:
@@ -214,6 +222,9 @@ class CreativeRoomWebHandler(BaseHTTPRequestHandler):
             payload = self._read_json()
             self._json(self.runner.update_settings(payload))
             return
+        if path == "/api/data/rebuild-index":
+            self._json(self.runner.rebuild_indexes(), HTTPStatus.CREATED)
+            return
         if path.startswith("/api/session/") and path.endswith("/feedback"):
             session_id = path.split("/")[-2]
             payload = self._read_json()
@@ -226,7 +237,13 @@ class CreativeRoomWebHandler(BaseHTTPRequestHandler):
         if path.startswith("/api/session/") and path.endswith("/complete"):
             session_id = path.split("/")[-2]
             payload = self._read_json()
-            self._json(self.runner.complete_session(session_id, bool(payload.get("completed", True))))
+            self._json(
+                self.runner.complete_session(
+                    session_id,
+                    bool(payload.get("completed", True)),
+                    revoke_learning_on_reopen=bool(payload.get("revoke_learning", True)),
+                )
+            )
             return
         if path.startswith("/api/session/") and path.endswith("/evolution/apply"):
             session_id = path.split("/")[-3]
@@ -236,6 +253,36 @@ class CreativeRoomWebHandler(BaseHTTPRequestHandler):
                 proposal_id=str(payload.get("proposal_id", "")).strip(),
                 reviewer_note=str(payload.get("reviewer_note", "")).strip(),
             )
+            self._json(result)
+            return
+        if path.startswith("/api/session/") and path.endswith("/evolution/ignore"):
+            session_id = path.split("/")[-3]
+            payload = self._read_json()
+            result = self.runner.ignore_evolution(
+                session_id=session_id,
+                proposal_id=str(payload.get("proposal_id", "")).strip(),
+                reviewer_note=str(payload.get("reviewer_note", "")).strip(),
+            )
+            self._json(result)
+            return
+        if path.startswith("/api/session/") and "/review/" in path and (path.endswith("/accept") or path.endswith("/skip")):
+            parts = path.strip("/").split("/")
+            session_id = parts[2]
+            item_id = unquote(parts[4])
+            payload = self._read_json()
+            if path.endswith("/accept"):
+                result = self.runner.accept_review_item(
+                    session_id,
+                    item_id,
+                    scope=str(payload.get("scope", "")).strip(),
+                    reviewer_note=str(payload.get("reviewer_note", "")).strip(),
+                )
+            else:
+                result = self.runner.skip_review_item(
+                    session_id,
+                    item_id,
+                    reviewer_note=str(payload.get("reviewer_note", "")).strip(),
+                )
             self._json(result)
             return
         self._json({"error": "not_found"}, HTTPStatus.NOT_FOUND)

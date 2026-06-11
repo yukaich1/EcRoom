@@ -1,0 +1,70 @@
+{
+  "capability_id": "knowledge_grounded",
+  "user_visible_label": "根据资料写",
+  "short_description": "基于用户提供的资料、链接或项目知识进行有边界的创作。",
+  "workflow_hint": "先处理来源和事实边界，再把可靠信息转化为内容。",
+  "trigger": "用户提供资料、链接、规范、引用或要求内容有事实依据。",
+  "version": "1.0.0",
+  "package_kind": "research",
+  "agent_sequence": [
+    "intent_interpreter",
+    "researcher",
+    "norm_steward",
+    "strategist",
+    "draft_writer",
+    "critic_panel"
+  ],
+  "pipeline": [
+    "intake",
+    "interpretation",
+    "source_processing",
+    "planning",
+    "production",
+    "quality_gate",
+    "feedback_bridge",
+    "telemetry"
+  ],
+  "tool_contract": [
+    "url.import",
+    "knowledge.search(hybrid)",
+    "memory.search(project)",
+    "source_boundary.review"
+  ],
+  "input_contract": [
+    "raw_request",
+    "sources",
+    "target_output",
+    "source_boundary"
+  ],
+  "output_contract": [
+    "source_summary",
+    "grounded_draft",
+    "missing_info",
+    "risk_notes"
+  ],
+  "constraints": [
+    "区分事实、推断和缺失信息。",
+    "不把资料外内容写成确定事实。"
+  ],
+  "quality_gates": [
+    "evidence_use",
+    "fact_boundary",
+    "critical_fact_errors",
+    "naturalness"
+  ],
+  "entry_examples": [
+    "根据这几段资料写一版说明文。"
+  ],
+  "failure_policy": [
+    "资料不可访问时保留线索并降低事实置信度。"
+  ],
+  "tags": [
+    "source",
+    "research",
+    "grounded"
+  ],
+  "schema_version": "capability_spec.v1",
+  "component": "capabilities/knowledge_grounded",
+  "owner": "capability_registry",
+  "rollback_target": "1.0.0"
+}

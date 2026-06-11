@@ -1,0 +1,27 @@
+{
+  "input_contract": [
+    "raw_request",
+    "duration",
+    "aspect_ratio",
+    "production_mode",
+    "materials",
+    "constraints"
+  ],
+  "output_contract": [
+    "creative_concept",
+    "beat_sheet",
+    "shot_table",
+    "ai_prompts",
+    "live_action_notes",
+    "subtitles"
+  ],
+  "quality_gates": [
+    "video_feasibility",
+    "shot_clarity",
+    "production_fit",
+    "naturalness"
+  ],
+  "feedback_bridge": {
+    "edit_handles_required": true
+  }
+}

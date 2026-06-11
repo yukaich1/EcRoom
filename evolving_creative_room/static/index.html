@@ -88,7 +88,7 @@
             <form id="inspirationCreateForm" class="composer compact-composer">
               <textarea id="inspirationRequest" rows="4" placeholder="写下需求、设定、平台、禁用表达，或者一段需要继续打磨的草稿。"></textarea>
               <div class="composer-actions">
-                <button class="tool-button small-tool" id="inspirationSkillButton" type="button"><svg aria-hidden="true"><use href="#i-tool"></use></svg><span id="inspirationSkillLabel">使用技能</span></button>
+                <button class="tool-button small-tool" id="inspirationSkillButton" type="button"><svg aria-hidden="true"><use href="#i-tool"></use></svg><span id="inspirationSkillLabel">开始方式</span></button>
                 <button class="send-button" type="submit" aria-label="开始生成"><svg aria-hidden="true"><use href="#i-send"></use></svg></button>
               </div>
             </form>
@@ -114,7 +114,7 @@
             <form id="createForm" class="composer large-composer">
               <textarea id="request" rows="7" placeholder="把需求、规则、禁用表达、平台、角色设定或需要改的草稿都写在这里。"></textarea>
               <div class="composer-actions">
-                <button class="tool-button small-tool" id="skillButton" type="button"><svg aria-hidden="true"><use href="#i-tool"></use></svg><span id="selectedSkillLabel">使用技能</span></button>
+                <button class="tool-button small-tool" id="skillButton" type="button"><svg aria-hidden="true"><use href="#i-tool"></use></svg><span id="selectedSkillLabel">开始方式</span></button>
                 <button class="send-button" type="submit" aria-label="开始生成"><svg aria-hidden="true"><use href="#i-send"></use></svg></button>
               </div>
             </form>
@@ -130,25 +130,19 @@
                 <button class="icon-button title-edit-button" id="chatTitleEditBtn" type="button" aria-label="修改标题"><svg aria-hidden="true"><use href="#i-pen"></use></svg></button>
               </div>
             </div>
+            <button class="icon-button evolution-review-button" id="evolutionReviewBtn" type="button" aria-label="本次学习沉淀" hidden>
+              <svg aria-hidden="true"><use href="#i-tool"></use></svg>
+              <span id="evolutionReviewCount">0</span>
+            </button>
           </header>
           <div id="messageList" class="message-list"></div>
           <form id="feedbackForm" class="composer chat-composer">
             <textarea id="feedbackNote" rows="4" placeholder="继续告诉我怎么改。也可以直接贴改稿、补充平台要求、禁用词、角色设定或个人偏好。"></textarea>
             <div class="composer-actions">
-              <button class="tool-button small-tool" id="chatSkillButton" type="button"><svg aria-hidden="true"><use href="#i-tool"></use></svg><span id="chatSkillLabel">使用技能</span></button>
+              <button class="tool-button small-tool" id="chatSkillButton" type="button" hidden><svg aria-hidden="true"><use href="#i-tool"></use></svg><span id="chatSkillLabel">开始方式</span></button>
               <button class="send-button" type="submit" aria-label="提交反馈"><svg aria-hidden="true"><use href="#i-send"></use></svg></button>
             </div>
           </form>
-          <section id="learningPanel" class="learning-panel" hidden>
-            <button class="learning-head" id="learningToggleBtn" type="button">
-              <div>
-                <p>完成后可选沉淀</p>
-                <h2 id="learningSummary">发现了几条可以保存的偏好</h2>
-              </div>
-              <span id="learningToggleText">展开</span>
-            </button>
-            <div id="learningList" class="learning-list"></div>
-          </section>
         </section>
 
         <section class="assets-screen screen" id="assetsScreen" aria-label="资产库">
@@ -196,8 +190,8 @@
             <button class="ghost-button" id="publishBackBtn" type="button">返回创作</button>
             <div>
               <p>Publish</p>
-              <h1>整理成作品</h1>
-              <span>发布前可以继续修改正文、选择规范标签，并添加一张封面图。</span>
+              <h1>发布作品</h1>
+              <span>发布前确认标题、正文、标签和封面。发布后会以帖子形式出现在个人主页。</span>
             </div>
           </header>
           <div class="publish-layout">
@@ -205,9 +199,9 @@
               <label>标题<input id="publishTitle" placeholder="给这篇作品起个标题" /></label>
               <label>正文<textarea id="publishBody" rows="14" placeholder="最终版本会放在这里，你可以继续调整。"></textarea></label>
               <div class="publish-tags-block">
-                <div class="publish-field-head"><strong>标签</strong><span>从规范标签池选择，或手动输入后回车。</span></div>
+                <div class="publish-field-head"><strong>标签</strong><span>输入后按回车确认，可添加多个。</span></div>
                 <div id="publishTagChoices" class="publish-tag-choices"></div>
-                <label class="tag-input-wrap"><input id="publishTagInput" placeholder="输入自定义标签" /></label>
+                <label class="tag-input-wrap"><input id="publishTagInput" placeholder="输入标签后按回车" /></label>
                 <div id="publishTagList" class="publish-tag-list"></div>
               </div>
               <div class="publish-cover-block">
@@ -221,7 +215,7 @@
               <div class="publish-actions">
                 <button class="danger-button" id="publishDeleteBtn" type="button">删除作品</button>
                 <button class="ghost-button" id="publishSaveDraftBtn" type="button">保存草稿</button>
-                <button class="primary-button" id="publishSubmitBtn" type="button">发布到主页</button>
+                <button class="primary-button" id="publishSubmitBtn" type="button">发布作品</button>
               </div>
             </section>
             <aside class="publish-preview">
@@ -262,95 +256,155 @@
           </div>
         </section>
 
-        <section class="settings-screen screen" id="settingsScreen" aria-label="设置">
-          <header class="settings-hero">
-            <div>
-              <p>Settings</p>
-              <h1>设置</h1>
-              <span>管理模型、偏好记忆和本地数据。</span>
-            </div>
-          </header>
-          <div class="settings-layout">
-            <nav class="settings-nav" aria-label="设置分区">
-              <button class="settings-nav-item active" type="button" data-settings-section="model"><strong>模型设置</strong><span>服务商、模型和 API Key</span></button>
-              <button class="settings-nav-item" type="button" data-settings-section="memory"><strong>偏好记忆</strong><span>确认后的偏好和候选策略</span></button>
-              <button class="settings-nav-item" type="button" data-settings-section="data"><strong>数据管理</strong><span>对话、资产和本地存储</span></button>
-            </nav>
-
-            <section class="settings-panel active" data-settings-panel="model">
-              <div class="settings-panel-head"><p>Model</p><h2>模型设置</h2><span>API Key 只保存在本地工作区，不会回显到页面。</span></div>
-              <form id="settingsForm" class="settings-form">
-                <label>服务商<select id="llmProvider"><option value="">沿用本地 .env</option><option value="mistral">Mistral</option><option value="openai">OpenAI</option><option value="deepseek">DeepSeek</option></select></label>
-                <label>模型<input id="llmModel" placeholder="mistral-small-latest" /></label>
-                <label>Base URL<input id="llmBaseUrl" placeholder="https://api.mistral.ai/v1" /></label>
-                <label>API Key<input id="llmApiKey" type="password" placeholder="留空则保留已有 key" autocomplete="off" /></label>
-                <div class="drawer-actions"><button class="ghost-button" id="testLlmBtn" type="button">测试连接</button><button class="primary-button" type="submit">保存模型</button></div>
-                <p class="helper-text" id="settingsHint">建议先用 Mistral 验证创作链路，后续可以切换 OpenAI 或 DeepSeek。</p>
-              </form>
-            </section>
-
-            <section class="settings-panel" data-settings-panel="memory">
-              <div class="settings-panel-head"><p>Memory</p><h2>偏好记忆</h2><span>这里只管理用户确认保存的偏好，系统不会把一次临时要求直接固化。</span></div>
-              <form id="memoryPolicyForm" class="settings-form compact-settings-form">
-                <label>候选展示上限<input id="memoryCandidateLimit" type="number" min="1" max="8" /></label>
-                <label>最低置信度<input id="memoryMinConfidence" type="number" min="0" max="1" step="0.05" /></label>
-                <label class="toggle-row"><input id="memoryCompleteOnly" type="checkbox" /><span>仅在作品完成后展示可保存偏好</span></label>
-                <div class="drawer-actions"><button class="primary-button" type="submit">保存记忆策略</button></div>
-              </form>
-              <section class="preference-settings settings-subsection">
-                <div class="preference-settings-head">
-                  <div><h3>已保存偏好</h3><p>删除后不会再参与后续创作召回。</p></div>
-                  <button class="ghost-button" id="refreshPreferencesBtn" type="button">刷新</button>
-                </div>
-                <div id="preferenceList" class="preference-list"></div>
-              </section>
-            </section>
-
-            <section class="settings-panel" data-settings-panel="data">
-              <div class="settings-panel-head"><p>Data</p><h2>数据管理</h2><span>EcRoom 的对话、资产、偏好和系统证据是分开管理的。</span></div>
-              <div class="settings-note-grid">
-                <article><strong>仅删除对话</strong><span>从历史移除会话，已确认偏好继续保留。</span></article>
-                <article><strong>清理本次记忆</strong><span>撤销本次候选和证据，不影响手动保存过的偏好。</span></article>
-                <article><strong>彻底删除</strong><span>移除原始会话文件和相关进化记录。</span></article>
-              </div>
-            </section>
-          </div>
-        </section>
+        <section class="settings-screen screen" id="settingsScreen" aria-label="设置"></section>
       </main>
     </div>
 
     <div class="skill-popover" id="skillMenu" aria-hidden="true">
-      <div class="popover-title">选择专家能力</div>
-      <button type="button" data-skill-id="creative_brief" data-skill="创作诊断" data-prompt="我有一个初步想法，请先帮我整理成创作 brief，再给出几个可继续推进的方向。"><strong>创作诊断</strong><span>模糊想法、需求拆解、路线判断</span></button>
-      <button type="button" data-skill-id="source_grounded" data-skill="资料驱动" data-prompt="我会提供资料、链接或规则，请先整理可用信息，再基于这些材料生成内容。"><strong>资料驱动</strong><span>链接、资料、规范、事实边界</span></button>
-      <button type="button" data-skill-id="narrative_canon" data-skill="叙事设定" data-prompt="我需要处理角色、世界观或剧情设定，请先锁定 canon，再生成可继续扩展的正文。"><strong>叙事设定</strong><span>角色、世界观、剧情一致性</span></button>
-      <button type="button" data-skill-id="publish_ready" data-skill="发布适配" data-prompt="请把这个内容改成适合发布的版本，自动处理平台语气、长度、标题和风险边界。"><strong>发布适配</strong><span>微博、小红书、公众号、活动页</span></button>
-      <button type="button" data-skill-id="revision_studio" data-skill="深度改稿" data-prompt="我会给出草稿和反馈，请保留有效信息，重写成更自然、更可用的版本。"><strong>深度改稿</strong><span>反馈响应、去模板感、风格重写</span></button>
-      <button type="button" data-skill-id="variant_lab" data-skill="方案实验" data-prompt="请围绕同一个目标生成几组差异明显的候选方案，并说明各自适合的方向。"><strong>方案实验</strong><span>标题、开头、卖点、多方向比较</span></button>
+      <div class="popover-title">选择开始方式</div>
+      <button type="button" data-skill-id="idea_to_draft" data-skill="把想法写成稿" data-prompt=""><strong>把想法写成稿</strong><span>观点、短文、帖子、灵感首稿</span></button>
+      <button type="button" data-skill-id="longform_builder" data-skill="写长文/方案" data-prompt=""><strong>写长文/方案</strong><span>文章、长帖、报告、结构化内容</span></button>
+      <button type="button" data-skill-id="knowledge_grounded" data-skill="根据资料写" data-prompt=""><strong>根据资料写</strong><span>资料、链接、事实边界、引用依据</span></button>
+      <button type="button" data-skill-id="professional_writer" data-skill="写职业文本" data-prompt=""><strong>写职业文本</strong><span>邮件、公告、汇报、商务沟通</span></button>
+      <button type="button" data-skill-id="story_world" data-skill="写故事/设定" data-prompt=""><strong>写故事/设定</strong><span>角色、世界观、剧情、场景台词</span></button>
+      <button type="button" data-skill-id="video_script" data-skill="写视频脚本" data-prompt=""><strong>写视频脚本</strong><span>AI 视频、真人拍摄、口播、分镜</span></button>
     </div>
 
     <section class="modal" id="renameModal" aria-hidden="true"><div class="modal-card"><h2>重命名对话</h2><input id="renameInput" placeholder="新的对话标题" /><div class="modal-actions"><button class="ghost-button" id="cancelRenameBtn" type="button">取消</button><button class="primary-button" id="confirmRenameBtn" type="button">确认</button></div></div></section>
     <section class="modal" id="deleteModal" aria-hidden="true">
       <div class="modal-card">
         <h2>删除这条对话？</h2>
-        <p>你可以只整理历史，也可以让这条对话不再影响后续创作。</p>
+        <p>这里只处理当前这条对话。已保存作品和你确认过的偏好不会被默认删除。</p>
         <div class="delete-options" role="radiogroup" aria-label="删除方式">
-          <label><input type="radio" name="deleteMode" value="history" checked /><span><strong>仅删除对话</strong><small>从历史列表移除，已经确认的偏好继续保留。</small></span></label>
-          <label><input type="radio" name="deleteMode" value="revoke_memory" /><span><strong>同时清理本次未确认记忆</strong><small>撤销这次产生的证据和候选，不影响你手动保存过的偏好。</small></span></label>
-          <label><input type="radio" name="deleteMode" value="full" /><span><strong>彻底删除</strong><small>同时移除原始会话文件、相关证据和进化记录。</small></span></label>
+          <label><input type="radio" name="deleteMode" value="history" checked /><span><strong>从历史中移除</strong><small>不再显示在左侧历史。已确认偏好、作品和项目资料继续保留。</small></span></label>
+          <label><input type="radio" name="deleteMode" value="revoke_memory" /><span><strong>同时撤销本次未确认学习</strong><small>隐藏这次尚未确认的偏好候选和工作规则建议，不影响你手动保存过的内容。</small></span></label>
+          <label><input type="radio" name="deleteMode" value="full" /><span><strong>删除本次原始文件</strong><small>移除这条会话的本地草稿、证据和关联进化记录。通常只在清理误建会话时使用。</small></span></label>
         </div>
         <div class="modal-actions"><button class="ghost-button" id="cancelDeleteBtn" type="button">取消</button><button class="danger-button" id="confirmDeleteBtn" type="button">删除</button></div>
       </div>
     </section>
-    <section class="modal" id="applyEvolutionModal" aria-hidden="true"><div class="modal-card"><h2>应用这条改进？</h2><p>它会写入本地工作规则，并留下审阅记录。</p><textarea id="applyEvolutionNote" rows="3" placeholder="审批说明，可留空"></textarea><div class="modal-actions"><button class="ghost-button" id="cancelApplyEvolutionBtn" type="button">取消</button><button class="primary-button" id="confirmApplyEvolutionBtn" type="button">应用</button></div></div></section>
+    <section class="modal settings-modal" id="settingsModal" aria-hidden="true">
+      <div class="modal-card settings-modal-card">
+        <aside class="settings-sidebar" aria-label="设置分区">
+          <button class="icon-button settings-close" id="closeSettingsBtn" type="button" aria-label="关闭"><svg aria-hidden="true"><use href="#i-close"></use></svg></button>
+          <nav class="settings-nav" aria-label="设置分区">
+            <button class="settings-nav-item active" type="button" data-settings-section="general"><strong>常规</strong><span>个人资料和显示</span></button>
+            <button class="settings-nav-item" type="button" data-settings-section="model"><strong>模型</strong><span>连接和能力</span></button>
+            <button class="settings-nav-item" type="button" data-settings-section="memory"><strong>个性化</strong><span>偏好和学习</span></button>
+            <button class="settings-nav-item" type="button" data-settings-section="data"><strong>数据管理</strong><span>对话、作品、资料</span></button>
+            <button class="settings-nav-item" type="button" data-settings-section="rules"><strong>工作规则</strong><span>复审和评测</span></button>
+          </nav>
+        </aside>
+        <section class="settings-content">
+          <section class="settings-panel active" data-settings-panel="general">
+            <div class="settings-panel-head"><p>General</p><h2>常规</h2><span>这些内容只影响 EcRoom 里的本地显示和创作者主页。</span></div>
+            <div class="settings-list">
+              <article class="settings-row"><div><strong>个人资料</strong><span>昵称、简介和头像在个人主页中编辑。</span></div><button class="ghost-button" type="button" data-settings-open-profile>打开个人主页</button></article>
+              <article class="settings-row"><div><strong>主题</strong><span>跟随右下角的明暗主题按钮，当前设置保存在本机浏览器。</span></div></article>
+            </div>
+          </section>
+
+          <section class="settings-panel" data-settings-panel="model">
+            <div class="settings-panel-head"><p>Model</p><h2>创作模型</h2><span>API Key 只保存在本地工作区，不会回显到页面。</span></div>
+            <div class="settings-status-row"><strong>当前连接</strong><span id="modelRuntimeStatus">读取中</span></div>
+            <form id="settingsForm" class="settings-form">
+              <label>服务商<select id="llmProvider"><option value="">本地兜底模式</option><option value="mistral">Mistral</option><option value="openai">OpenAI</option><option value="deepseek">DeepSeek</option></select></label>
+              <label>模型<input id="llmModel" placeholder="mistral-small-latest" /></label>
+              <label>API Key<input id="llmApiKey" type="password" placeholder="留空则保留已有 key" autocomplete="off" /></label>
+              <details class="advanced-settings"><summary>高级连接设置</summary><label>Base URL<input id="llmBaseUrl" placeholder="https://api.mistral.ai/v1" /></label></details>
+              <div class="drawer-actions"><button class="ghost-button" id="testLlmBtn" type="button">测试连接</button><button class="primary-button" type="submit">保存模型</button></div>
+              <p class="helper-text" id="settingsHint">没有配置真实模型时，EcRoom 会使用本地兜底链路，适合验证流程，不适合最终创作质量。</p>
+            </form>
+          </section>
+
+          <section class="settings-panel" data-settings-panel="memory">
+            <div class="settings-panel-head"><p>Preference</p><h2>个性化</h2><span>这里只管理你确认保存的偏好。临时要求只影响当前创作，不会自动变成长期记忆。</span></div>
+            <form id="memoryPolicyForm" class="settings-form compact-settings-form">
+              <label>每次最多建议保存<input id="memoryCandidateLimit" type="number" min="1" max="8" /></label>
+              <label>建议严格度<input id="memoryMinConfidence" type="range" min="0" max="1" step="0.05" /></label>
+              <label class="toggle-row"><input id="memoryCompleteOnly" type="checkbox" /><span>仅在作品完成后展示可保存偏好</span></label>
+              <div class="drawer-actions"><button class="primary-button" type="submit">保存个性化设置</button></div>
+            </form>
+            <section class="preference-settings settings-subsection">
+              <div class="preference-settings-head">
+                <div><h3>已保存偏好</h3><p>删除后不会再参与后续创作召回。</p></div>
+                <button class="ghost-button" id="refreshPreferencesBtn" type="button">刷新</button>
+              </div>
+              <div id="preferenceList" class="preference-list"></div>
+            </section>
+          </section>
+
+          <section class="settings-panel" data-settings-panel="data">
+            <div class="settings-panel-head"><p>Data</p><h2>数据管理</h2><span>EcRoom 的数据按创作对象分开管理，避免误删长期记忆或作品。</span></div>
+            <div class="settings-list">
+              <article class="settings-row"><div><strong>对话记录</strong><span>左侧历史保存创作过程。删除单条对话时，可以选择是否撤销本次未确认学习。</span></div><button class="ghost-button" type="button" data-settings-close-only>在历史中管理</button></article>
+              <article class="settings-row"><div><strong>已完成作品</strong><span>作品库保存可复用成果、发布草稿和封面引用。</span></div><button class="ghost-button" type="button" data-settings-open-assets>打开作品库</button></article>
+              <article class="settings-row"><div><strong>偏好记忆</strong><span>你确认过的长期偏好和项目规则，可在个性化中逐条删除。</span></div><button class="ghost-button" type="button" data-settings-go="memory">管理偏好</button></article>
+              <article class="settings-row"><div><strong>项目资料</strong><span>导入的链接、规范和设定保存在本地工作区，用于资料写作和设定一致性检查。</span></div></article>
+              <article class="settings-row"><div><strong>创作助理改进建议</strong><span>工作规则建议只在相关对话角落复审，默认不会影响所有项目。</span></div></article>
+              <article class="settings-row"><div><strong>工作区检查</strong><span id="dataDoctorStatus">检查会话、作品、资料、记忆和媒体引用是否完整。</span></div><button class="ghost-button" id="runDataDoctorBtn" type="button">检查</button></article>
+              <article class="settings-row"><div><strong>修复搜索索引</strong><span>从本地记忆和资料重新写入检索索引，不修改正文和偏好。</span></div><button class="ghost-button" id="rebuildIndexBtn" type="button">修复索引</button></article>
+            </div>
+          </section>
+
+          <section class="settings-panel" data-settings-panel="rules">
+            <div class="settings-panel-head"><p>Review</p><h2>工作规则</h2><span>这些开关只影响创作助理如何复盘本次创作，不会直接改写你的作品。</span></div>
+            <form id="harnessSettingsForm" class="settings-form compact-settings-form">
+              <label class="toggle-row"><input id="harnessAutoPropose" type="checkbox" /><span>允许提出创作助理改进建议</span></label>
+              <label class="toggle-row"><input id="harnessRecordSkillRuns" type="checkbox" /><span>记录能力流程结果，用于评测和复盘</span></label>
+              <label>改进前至少验证<input id="harnessMinEvalCases" type="number" min="1" max="20" /></label>
+              <div class="drawer-actions"><button class="primary-button" type="submit">保存工作规则设置</button></div>
+            </form>
+          </section>
+        </section>
+      </div>
+    </section>
+    <section class="modal" id="applyEvolutionModal" aria-hidden="true">
+      <div class="modal-card evolution-review-card">
+        <div class="modal-head">
+          <div>
+            <p id="evolutionReviewCounter">1 / 1</p>
+            <h2>这次要沉淀什么？</h2>
+          </div>
+          <button class="icon-button" id="cancelApplyEvolutionBtn" type="button" aria-label="关闭"><svg aria-hidden="true"><use href="#i-close"></use></svg></button>
+        </div>
+        <div class="evolution-review-copy">
+          <strong id="evolutionReviewTitle">学习沉淀</strong>
+          <p id="evolutionReviewBody">这次创作里有一条值得确认的信号。</p>
+          <div class="evolution-review-meta">
+            <span id="evolutionReviewScope">适用范围：当前项目</span>
+            <span id="evolutionReviewImpact">可能影响：需要人工复核</span>
+          </div>
+        </div>
+        <details class="evolution-tech-details">
+          <summary>学习依据</summary>
+          <pre id="evolutionReviewTech"></pre>
+        </details>
+        <div class="modal-actions">
+          <button class="ghost-button" id="ignoreEvolutionBtn" type="button">跳过</button>
+          <button class="primary-button" id="confirmApplyEvolutionBtn" type="button">保存这条</button>
+        </div>
+      </div>
+    </section>
     <section class="modal" id="publishPromptModal" aria-hidden="true">
       <div class="modal-card publish-prompt-card">
         <h2>这版作品已经保存</h2>
-        <p>可以发布到个人主页，也可以先留在作品库里，之后再继续打磨。</p>
+        <p>可以发布到个人主页，也可以先留在作品库里。完成后，本次可学习的偏好和项目规则会单独交给你确认。</p>
         <div class="modal-actions stacked-actions">
           <button class="primary-button" id="goPublishBtn" type="button">发布作品</button>
           <button class="ghost-button" id="saveWorkOnlyBtn" type="button">只保存作品</button>
           <button class="ghost-button" id="continueWorkBtn" type="button">继续修改</button>
+        </div>
+      </div>
+    </section>
+    <section class="modal" id="reopenWorkModal" aria-hidden="true">
+      <div class="modal-card publish-prompt-card">
+        <h2>继续修改这版作品？</h2>
+        <p>如果继续创作，刚才根据这版作品整理出的学习条目可能不再准确。你可以删除本次学习条目，之后完成时再重新沉淀。</p>
+        <div class="modal-actions stacked-actions">
+          <button class="primary-button" id="reopenAndClearLearningBtn" type="button">继续修改并删除本次学习</button>
+          <button class="ghost-button" id="reopenKeepLearningBtn" type="button">继续修改但暂时保留</button>
+          <button class="ghost-button" id="cancelReopenWorkBtn" type="button">取消</button>
         </div>
       </div>
     </section>
@@ -385,8 +439,8 @@
           <img id="previewImage" class="preview-image" src="" alt="" />
           <div id="previewType" class="asset-work-type">灵感</div>
           <h2 id="previewTitle">灵感详情</h2>
-          <div class="preview-section"><h3>完整提示词</h3><p id="previewPrompt"></p></div>
-          <div class="preview-section"><h3>最后版本</h3><p id="previewOutput"></p></div>
+          <div class="preview-section" id="previewPromptSection"><h3 id="previewPromptLabel">完整提示词</h3><p id="previewPrompt"></p></div>
+          <div class="preview-section"><h3 id="previewOutputLabel">最后版本</h3><p id="previewOutput"></p></div>
         </article>
         <aside class="preview-side">
           <div class="asset-author"><span class="asset-avatar"><img src="/assets/ecroom-icon-64.png" alt="" /></span><strong>EcRoom</strong></div>

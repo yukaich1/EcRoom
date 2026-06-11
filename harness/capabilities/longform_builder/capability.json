@@ -1,0 +1,68 @@
+{
+  "capability_id": "longform_builder",
+  "user_visible_label": "写长文/方案",
+  "short_description": "为文章、长帖、方案、说明或报告型内容建立结构并生成首稿。",
+  "workflow_hint": "先建立论点、段落功能和推进顺序，再写可按段继续修改的长内容。",
+  "trigger": "用户要求文章、长帖、方案、报告、演讲稿或需要多段结构的内容。",
+  "version": "1.0.0",
+  "package_kind": "initial_creation",
+  "agent_sequence": [
+    "intent_interpreter",
+    "researcher",
+    "strategist",
+    "draft_writer",
+    "critic_panel"
+  ],
+  "pipeline": [
+    "intake",
+    "interpretation",
+    "planning",
+    "production",
+    "quality_gate",
+    "feedback_bridge",
+    "telemetry"
+  ],
+  "tool_contract": [
+    "knowledge.search(project)",
+    "memory.search(preference,project)",
+    "structure.review"
+  ],
+  "input_contract": [
+    "raw_request",
+    "topic",
+    "audience",
+    "length",
+    "materials",
+    "constraints"
+  ],
+  "output_contract": [
+    "outline",
+    "longform_draft",
+    "section_edit_handles"
+  ],
+  "constraints": [
+    "不套固定总分总模板。",
+    "资料不足时标明缺口，不编造证据。"
+  ],
+  "quality_gates": [
+    "structure_integrity",
+    "argument_flow",
+    "naturalness",
+    "continuation_ready"
+  ],
+  "entry_examples": [
+    "帮我写一篇关于这个产品思路的长文。"
+  ],
+  "failure_policy": [
+    "目标过宽时先生成结构化提纲和首段样稿。"
+  ],
+  "tags": [
+    "longform",
+    "article",
+    "plan"
+  ],
+  "schema_version": "capability_spec.v1",
+  "component": "capabilities/longform_builder",
+  "owner": "capability_registry",
+  "rollback_target": "1.0.0"
+}

@@ -1,0 +1,163 @@
+[
+  {
+    "case_id": "professional_writer_happy_path",
+    "case_type": "happy_path",
+    "input": "帮我写一封委婉但明确的拒绝邮件。",
+    "must_check": [
+      "contract_pass",
+      "naturalness",
+      "continuation_ready",
+      "objective_fit",
+      "tone_fit",
+      "risk_boundary",
+      "action_clarity"
+    ],
+    "output_contract": [
+      "ready_to_send_text",
+      "optional_variants",
+      "risk_notes"
+    ],
+    "forbidden_failures": [
+      "visible_internal_trace",
+      "template_style"
+    ]
+  },
+  {
+    "case_id": "professional_writer_sparse_input",
+    "case_type": "sparse_input",
+    "input": "我只有一个很粗略的想法，帮我先写一个可继续修改的版本。",
+    "must_check": [
+      "fallback_usable",
+      "intent_fit",
+      "naturalness",
+      "objective_fit",
+      "tone_fit",
+      "risk_boundary",
+      "action_clarity"
+    ],
+    "output_contract": [
+      "ready_to_send_text",
+      "optional_variants",
+      "risk_notes"
+    ],
+    "forbidden_failures": [
+      "over_expansion",
+      "forced_form",
+      "visible_internal_trace"
+    ]
+  },
+  {
+    "case_id": "professional_writer_constraint_heavy",
+    "case_type": "constraint_heavy",
+    "input": "请保留核心信息，但不要夸张、不要硬广、不要替我新增没有依据的承诺。",
+    "must_check": [
+      "constraint_following",
+      "negation_preserved",
+      "scope_safety",
+      "objective_fit",
+      "tone_fit",
+      "risk_boundary",
+      "action_clarity"
+    ],
+    "output_contract": [
+      "ready_to_send_text",
+      "optional_variants",
+      "risk_notes"
+    ],
+    "forbidden_failures": [
+      "negation_loss",
+      "unsupported_claim",
+      "scope_overreach"
+    ]
+  },
+  {
+    "case_id": "professional_writer_feedback_bridge",
+    "case_type": "feedback_bridge",
+    "input": "先给首版，后续我可能会要求改第二段、缩短、换语气或保留某个设定。",
+    "must_check": [
+      "edit_handles_present",
+      "continuation_ready",
+      "targetable_output",
+      "objective_fit",
+      "tone_fit",
+      "risk_boundary",
+      "action_clarity"
+    ],
+    "output_contract": [
+      "ready_to_send_text",
+      "optional_variants",
+      "risk_notes"
+    ],
+    "forbidden_failures": [
+      "dead_end_output",
+      "missing_edit_handles"
+    ]
+  },
+  {
+    "case_id": "professional_writer_quality_failure",
+    "case_type": "quality_failure",
+    "input": "请生成一版，但要能检查是否太模板、太空泛或不符合任务边界。",
+    "must_check": [
+      "quality_gate_triggered",
+      "failure_signal_recorded",
+      "objective_fit",
+      "tone_fit",
+      "risk_boundary",
+      "action_clarity"
+    ],
+    "output_contract": [
+      "ready_to_send_text",
+      "optional_variants",
+      "risk_notes"
+    ],
+    "forbidden_failures": [
+      "quality_issue_ignored",
+      "process_notes_in_body"
+    ]
+  },
+  {
+    "case_id": "professional_writer_scope_safety",
+    "case_type": "scope_safety",
+    "input": "这次先写得冷一点，但不要记成我以后都喜欢这种风格。",
+    "must_check": [
+      "temporary_context_detected",
+      "scope_safety",
+      "objective_fit",
+      "tone_fit",
+      "risk_boundary",
+      "action_clarity"
+    ],
+    "output_contract": [
+      "ready_to_send_text",
+      "optional_variants",
+      "risk_notes"
+    ],
+    "forbidden_failures": [
+      "global_memory_created",
+      "scope_overreach"
+    ]
+  },
+  {
+    "case_id": "professional_writer_chinese_naturalness",
+    "case_type": "chinese_naturalness",
+    "input": "请用中文自然表达，像真人创作者写的，不要像翻译腔或模板说明。",
+    "must_check": [
+      "naturalness",
+      "chinese_readability",
+      "objective_fit",
+      "tone_fit",
+      "risk_boundary",
+      "action_clarity"
+    ],
+    "output_contract": [
+      "ready_to_send_text",
+      "optional_variants",
+      "risk_notes"
+    ],
+    "forbidden_failures": [
+      "translationese",
+      "generic_language",
+      "template_style"
+    ]
+  }
+]

@@ -1,0 +1,38 @@
+{
+  "session_id": "session_5938f51c9af1",
+  "proposals": [
+    {
+      "target_component": "harness/agents/canon_keeper.md",
+      "failure_evidence": [
+        "**城市简介**中\"被海洋遗忘的孩子\"的比喻可改为更具象的描述，如\"三面环山像襁褓，唯一的出口被潮汐钟的钟声锁死\"，避免抽象意象。",
+        "**核心冲突**的\"有人传言…也有人坚持…\"句式可改为更直接的对立描述，如\"两种声音在暗中交锋：一种说钟声是密码，一种说它是倒计时\"。",
+        "**剧情钩子1**的\"盲眼乐师\"设定可补充具体障碍，如\"他失明是因为小时候偷听钟声被强光灼伤\"，增强冲突感。",
+        "**剧情钩子2**的《淹没者的日记》可明确日记的发现过程，如\"图书管理员在清理防潮箱时发现书脊有异常膨胀\"，增强真实感。",
+        "**剧情钩子3**的镜子设定可补充细节，如\"钥匙上的标记是用海藻汁书写的，触摸时会有海水气味\"，丰富感官体验。",
+        "叙事语境：角色口吻、世界观事实、剧情时间线应保持一致。"
+      ],
+      "root_cause": "Narrative constraints need explicit continuity checks.",
+      "targeted_fix": "Add canon consistency checklist before final rewrite.",
+      "expected_improvement": "Reduce out-of-character and timeline conflicts.",
+      "regression_risk": "May slow down short social posts that only lightly reference canon.",
+      "proposal_id": "chg_375c46dc372b",
+      "created_at": "2026-05-16T17:04:39.431349+00:00",
+      "status": "proposed"
+    },
+    {
+      "target_component": "harness/agents/norm_steward.md",
+      "failure_evidence": [
+        "叙事语境：角色口吻、世界观事实、剧情时间线应保持一致。"
+      ],
+      "root_cause": "Norm advice must remain separate from creative preference.",
+      "targeted_fix": "Record platform hard rules, soft conventions, and project rules separately.",
+      "expected_improvement": "Better traceability and fewer overblocking suggestions.",
+      "regression_risk": "More nuanced output may require clearer UI grouping.",
+      "proposal_id": "chg_6038fc955cf8",
+      "created_at": "2026-05-16T17:04:39.431349+00:00",
+      "status": "proposed"
+    }
+  ],
+  "manifest_id": "manifest_54636bcdf020",
+  "created_at": "2026-05-16T17:04:39.431349+00:00"
+}

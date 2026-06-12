@@ -1,0 +1,46 @@
+{
+  "session_id": "session_02654c3553dc",
+  "proposals": [
+    {
+      "target_component": "harness/agents/canon_keeper.md",
+      "failure_evidence": [
+        "**角色口吻不够稳**：登场文案第一句\"哟\"过于口语化，与\"清冷中带恶意的促狭\"的内核不完全匹配，可改为更含蓄的反讽（如\"又被当成路边的点缀了呢\"）。",
+        "**冲突表现弱化**：登场文案未体现\"聪慧与美貌是双刃剑\"的核心冲突，可在水晶球悬浮后加一句\"可惜啊，漂亮话从来都是说给聋子听\"。",
+        "**可传播短版缺乏\"工笔系\"特色**：\"手提袋里全是拆不开的谜题\"可改为\"手提袋里装着连时钟都会怀疑人生的谜题\"，强化魔法风格描述。",
+        "**微博转发话术过于主观**：建议改为更具互动性的开放话题（如\"猜猜薇拉今晚会拆解哪个城市的谜题？\"），避免\"秒杀剧情\"等过度解读。",
+        "**视觉特写建议需更具体**：\"咒语浮现时‘工笔’魔法轨迹特写\"可补充\"如同墨笔勾勒星辰\"的细节描述，增强画面感。",
+        "微博语境：避免蹭无关热搜、虚假信息、过度营销和侵犯权益内容。",
+        "叙事语境：角色口吻、世界观事实、剧情时间线应保持一致。",
+        "资料库提示：平台规范线索：用户提到“微博”，后续生成应自动召回并遵守该平台的表达习惯和发布边界。"
+      ],
+      "root_cause": "Narrative constraints need explicit continuity checks.",
+      "targeted_fix": "Add canon consistency checklist before final rewrite.",
+      "expected_improvement": "Reduce out-of-character and timeline conflicts.",
+      "regression_risk": "May slow down short social posts that only lightly reference canon.",
+      "validation_plan": "Run character/worldbuilding eval cases and check norm/canon comments.",
+      "predicted_metric": "lower canon warning count without reducing draft completion",
+      "proposal_id": "chg_460dd03caf75",
+      "created_at": "2026-05-17T03:24:36.955634+00:00",
+      "status": "proposed"
+    },
+    {
+      "target_component": "harness/agents/norm_steward.md",
+      "failure_evidence": [
+        "微博语境：避免蹭无关热搜、虚假信息、过度营销和侵犯权益内容。",
+        "叙事语境：角色口吻、世界观事实、剧情时间线应保持一致。",
+        "资料库提示：平台规范线索：用户提到“微博”，后续生成应自动召回并遵守该平台的表达习惯和发布边界。"
+      ],
+      "root_cause": "Norm advice must remain separate from creative preference.",
+      "targeted_fix": "Record platform hard rules, soft conventions, and project rules separately.",
+      "expected_improvement": "Better traceability and fewer overblocking suggestions.",
+      "regression_risk": "More nuanced output may require clearer UI grouping.",
+      "validation_plan": "Run platform adaptation eval cases and inspect risk grouping.",
+      "predicted_metric": "more precise norm comments with fewer generic warnings",
+      "proposal_id": "chg_081b4eba9c04",
+      "created_at": "2026-05-17T03:24:36.955634+00:00",
+      "status": "proposed"
+    }
+  ],
+  "manifest_id": "manifest_dd2e724b0a97",
+  "created_at": "2026-05-17T03:24:36.955634+00:00"
+}

@@ -1,0 +1,270 @@
+{
+  "session_7a88fbe3f7ba": {
+    "title": "新版会话验证",
+    "pinned": true,
+    "deleted": true,
+    "created_at": "2026-05-16T12:29:11.492898+00:00",
+    "updated_at": "2026-05-16T12:29:39.362483+00:00",
+    "updated_at_ts": 1778934555.3469613
+  },
+  "session_3a13f42d4fe3": {
+    "title": "你",
+    "pinned": false,
+    "deleted": true,
+    "created_at": "2026-05-16T12:33:42.616662+00:00",
+    "updated_at": "2026-05-16T12:37:16.420440+00:00",
+    "updated_at_ts": 1778934822.6156628
+  },
+  "session_63246478d700": {
+    "title": "你",
+    "pinned": false,
+    "deleted": true,
+    "created_at": "2026-05-16T12:33:43.570761+00:00",
+    "updated_at": "2026-05-16T12:37:18.773659+00:00",
+    "updated_at_ts": 1778934823.5707617
+  },
+  "session_05954e6d9016": {
+    "title": "你",
+    "pinned": false,
+    "deleted": true,
+    "created_at": "2026-05-16T12:33:51.901352+00:00",
+    "updated_at": "2026-05-16T13:08:02.024802+00:00",
+    "updated_at_ts": 1778934831.901353
+  },
+  "session_f5c9aadedae1": {
+    "title": "请帮我写一段泛用内容创作测试：同一个核心想法，适...",
+    "pinned": false,
+    "deleted": false,
+    "created_at": "2026-05-16T12:56:15.705697+00:00",
+    "updated_at": "2026-06-11T03:52:19.678763+00:00",
+    "updated_at_ts": 1778936183.595917,
+    "completed": false
+  },
+  "session_b9401e7cb16e": {
+    "title": "请把一个游戏角色设定改成能发小红书和微博的泛用内...",
+    "pinned": false,
+    "deleted": false,
+    "created_at": "2026-05-16T12:58:37.382507+00:00",
+    "updated_at": "2026-05-16T12:58:37.382507+00:00",
+    "updated_at_ts": 1778936317.3825073
+  },
+  "session_dbece38faf1f": {
+    "title": "请写一个小红书和微博都能继续改的角色文案，要求别...",
+    "pinned": false,
+    "deleted": false,
+    "created_at": "2026-05-16T12:59:56.377741+00:00",
+    "updated_at": "2026-06-07T12:37:40.049841+00:00",
+    "updated_at_ts": 1778936396.3777418,
+    "completed": false
+  },
+  "session_1afd89305ea4": {
+    "title": "写一篇小红书风格的体验笔记，主题是一个安静的夜间...",
+    "pinned": false,
+    "deleted": true,
+    "created_at": "2026-05-16T13:03:16.092615+00:00",
+    "updated_at": "2026-05-16T16:56:30.788872+00:00",
+    "updated_at_ts": 1778936596.0916157
+  },
+  "session_d6f1714a07ba": {
+    "title": "帮我写一段游戏世界观设定，描述一座被潮汐钟控制的...",
+    "pinned": false,
+    "deleted": true,
+    "created_at": "2026-05-16T13:07:13.950833+00:00",
+    "updated_at": "2026-05-16T16:56:27.142284+00:00",
+    "updated_at_ts": 1778936833.950833
+  },
+  "session_5938f51c9af1": {
+    "title": "写一段被潮汐钟控制的城市设定，带一点阴谋感。请输...",
+    "pinned": false,
+    "deleted": true,
+    "created_at": "2026-05-16T17:04:39.426831+00:00",
+    "updated_at": "2026-06-07T12:39:33.262615+00:00",
+    "updated_at_ts": 1778951079.4258316,
+    "completed": true,
+    "completed_at": "2026-06-07T12:36:23.541900+00:00",
+    "archive": "works",
+    "delete_mode": "history"
+  },
+  "session_0998079465c6": {
+    "title": "我需要一段游戏角色文案，请先稳住角色内核，再给出...",
+    "pinned": false,
+    "deleted": true,
+    "created_at": "2026-05-17T03:13:39.866976+00:00",
+    "updated_at": "2026-05-17T03:25:22.548975+00:00",
+    "updated_at_ts": 1778987619.866976
+  },
+  "session_02654c3553dc": {
+    "title": "我需要一段游戏角色文案，请先稳住角色内核，再给出...",
+    "pinned": false,
+    "deleted": true,
+    "created_at": "2026-05-17T03:24:36.600114+00:00",
+    "updated_at": "2026-05-17T03:35:57.771162+00:00",
+    "updated_at_ts": 1778988276.599513,
+    "delete_mode": "revoke_memory"
+  },
+  "session_20d91cdc7a65": {
+    "deleted": true,
+    "delete_mode": "revoke_memory",
+    "updated_at": "2026-05-17T03:35:02.889241+00:00",
+    "updated_at_ts": 1778912870.6023273
+  },
+  "session_df5bc62919d8": {
+    "deleted": true,
+    "delete_mode": "revoke_memory",
+    "updated_at": "2026-05-17T03:35:10.016810+00:00",
+    "updated_at_ts": 1778912927.629266
+  },
+  "session_cfbbc5b62d66": {
+    "title": "我需要一段游戏角色文案，请先稳住角色内核，再给出...",
+    "pinned": false,
+    "deleted": true,
+    "created_at": "2026-05-17T03:36:29.289190+00:00",
+    "updated_at": "2026-05-17T03:36:46.906172+00:00",
+    "updated_at_ts": 1778988989.2881901,
+    "delete_mode": "revoke_memory"
+  },
+  "session_2ec4bf9fcb82": {
+    "title": "我需要一段游戏角色文案，请先稳住角色内核，再给出...",
+    "pinned": false,
+    "deleted": true,
+    "created_at": "2026-05-17T03:37:00.941353+00:00",
+    "updated_at": "2026-05-20T13:28:28.542653+00:00",
+    "updated_at_ts": 1778989020.9413533,
+    "delete_mode": "revoke_memory"
+  },
+  "session_4ab77e89c24b": {
+    "title": "帮我写一段微博角色登场文案，要求不要夸张承诺，这...",
+    "pinned": false,
+    "deleted": true,
+    "created_at": "2026-05-20T13:13:48.045663+00:00",
+    "updated_at": "2026-05-20T13:28:23.581833+00:00",
+    "updated_at_ts": 1779282828.044668,
+    "delete_mode": "revoke_memory"
+  },
+  "session_fb9978db1e3f": {
+    "title": "我需要一段游戏角色文案，请先稳住角色内核，再给出...",
+    "pinned": false,
+    "deleted": true,
+    "created_at": "2026-05-20T13:28:45.922261+00:00",
+    "updated_at": "2026-05-20T14:53:01.462797+00:00",
+    "updated_at_ts": 1779283725.9212625,
+    "delete_mode": "revoke_memory"
+  },
+  "session_bc80f73101b2": {
+    "title": "帮我写一段微博角色登场文案，要求不要夸张承诺，这...",
+    "pinned": false,
+    "deleted": true,
+    "created_at": "2026-05-20T13:47:28.194179+00:00",
+    "updated_at": "2026-05-20T14:53:13.252954+00:00",
+    "updated_at_ts": 1779284848.1941793,
+    "delete_mode": "revoke_memory"
+  },
+  "session_d6c9a74608e9": {
+    "title": "角色初现冷面登场角色登场冷角色登场冷",
+    "pinned": false,
+    "deleted": false,
+    "created_at": "2026-05-20T14:40:54.448282+00:00",
+    "updated_at": "2026-06-07T12:33:13.132135+00:00",
+    "updated_at_ts": 1779288054.448282,
+    "completed": true,
+    "completed_at": "2026-06-07T12:33:13.131134+00:00",
+    "archive": "works"
+  },
+  "session_1fa4ade8ba86": {
+    "title": "魔女角色文案",
+    "pinned": false,
+    "deleted": false,
+    "created_at": "2026-05-20T14:53:26.360967+00:00",
+    "updated_at": "2026-05-24T09:39:30.834229+00:00",
+    "updated_at_ts": 1779289024.4972134,
+    "completed": true,
+    "completed_at": "2026-05-21T12:12:13.087437+00:00",
+    "asset_deleted": true,
+    "asset_deleted_at": "2026-05-24T09:39:30.834209+00:00"
+  },
+  "session_8ebf9d689700": {
+    "deleted": true,
+    "delete_mode": "revoke_memory",
+    "updated_at": "2026-05-24T09:03:23.761964+00:00",
+    "updated_at_ts": 1778916956.0218165
+  },
+  "session_784d2e13d45d": {
+    "title": "魔女的智与美聪慧貌美的魔女登场智慧与",
+    "pinned": false,
+    "deleted": false,
+    "created_at": "2026-05-24T09:40:10.140098+00:00",
+    "updated_at": "2026-05-24T09:40:21.853072+00:00",
+    "updated_at_ts": 1779615610.1388907,
+    "completed": true,
+    "completed_at": "2026-05-24T09:40:21.853062+00:00",
+    "archive": "works"
+  },
+  "session_cabbdbb3d9be": {
+    "title": "城市简介被诅咒的灰色之都核心冲突魔女",
+    "pinned": false,
+    "deleted": true,
+    "created_at": "2026-06-07T12:40:03.495811+00:00",
+    "updated_at": "2026-06-07T13:01:56.508630+00:00",
+    "updated_at_ts": 1780836490.856761,
+    "completed": false,
+    "delete_mode": "full"
+  },
+  "session_619f4cbf534d": {
+    "title": "城市简介被诅咒的银月城核心冲突魔女权",
+    "pinned": false,
+    "deleted": false,
+    "created_at": "2026-06-07T13:02:24.327677+00:00",
+    "updated_at": "2026-06-07T13:03:15.083401+00:00",
+    "updated_at_ts": 1780837383.3138902,
+    "completed": true,
+    "completed_at": "2026-06-07T13:03:15.083401+00:00",
+    "archive": "works"
+  },
+  "session_566aabab7af3": {
+    "title": "银灰魔女逐梦黄昏扫帚漫步魔女飞越小镇",
+    "pinned": false,
+    "deleted": true,
+    "created_at": "2026-06-10T15:43:41.664510+00:00",
+    "updated_at": "2026-06-11T03:03:34.194865+00:00",
+    "updated_at_ts": 1781106221.6645105,
+    "delete_mode": "full"
+  },
+  "session_5162815a7115": {
+    "title": "银灰魔女飞越镇长发随风起晚霞染小镇扫",
+    "pinned": false,
+    "deleted": false,
+    "created_at": "2026-06-11T03:04:06.379743+00:00",
+    "updated_at": "2026-06-11T04:13:13.325558+00:00",
+    "updated_at_ts": 1781147046.3787358,
+    "completed": true,
+    "completed_at": "2026-06-11T03:06:40.752571+00:00",
+    "archive": "works",
+    "asset_deleted": true,
+    "asset_deleted_at": "2026-06-11T04:13:13.325558+00:00"
+  },
+  "session_8a87520e7643": {
+    "title": "银灰魔女飞越镇长发随风起晚霞染小镇扫",
+    "pinned": false,
+    "deleted": false,
+    "created_at": "2026-06-11T04:13:50.655687+00:00",
+    "updated_at": "2026-06-11T04:15:42.718534+00:00",
+    "updated_at_ts": 1781151230.6546884,
+    "completed": true,
+    "completed_at": "2026-06-11T04:15:42.718534+00:00",
+    "archive": "works"
+  },
+  "session_9d07d1866e74": {
+    "deleted": true,
+    "delete_mode": "full",
+    "updated_at": "2026-06-12T04:14:12.017766+00:00",
+    "updated_at_ts": 1778913978.1572733
+  },
+  "session_477e0c4e5946": {
+    "title": "魔女之城的诅咒被诅咒的永夜魔女的囚笼",
+    "pinned": false,
+    "deleted": false,
+    "created_at": "2026-06-12T04:14:54.244771+00:00",
+    "updated_at": "2026-06-12T04:14:55.126293+00:00",
+    "updated_at_ts": 1781237694.2437623
+  }
+}

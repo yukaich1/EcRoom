@@ -1,0 +1,46 @@
+{
+  "session_id": "session_8a87520e7643",
+  "proposals": [
+    {
+      "target_component": "harness/agents/norm_steward.md",
+      "failure_evidence": [
+        "通用规范：检查事实、版权、隐私、歧视、低俗、夸大承诺等风险。",
+        "资料库提示：用户自定义规则：不要出现文字、水印、变形脸、额外肢体或低质量画面"
+      ],
+      "root_cause": "Norm advice must remain separate from creative preference.",
+      "proposed_change": "Record platform hard rules, soft conventions, and project rules separately.",
+      "expected_improvement": "Better traceability and fewer overblocking suggestions.",
+      "risk": "More nuanced output may require clearer UI grouping.",
+      "validation_plan": "Run platform adaptation eval cases and inspect risk grouping.",
+      "predicted_metric": "more precise norm comments with fewer generic warnings",
+      "evidence_ids": [],
+      "rollback_plan": "Revert to the previous harness component version.",
+      "proposal_id": "chg_f95bce4c08ce",
+      "created_at": "2026-06-11T04:13:50.659688+00:00",
+      "status": "needs_validation",
+      "reviewed_at": "2026-06-11T04:16:22.006989+00:00"
+    },
+    {
+      "target_component": "harness/rubrics/creative_quality.md",
+      "failure_evidence": [
+        "重复短语比例偏高"
+      ],
+      "root_cause": "Quality review needs a stronger boundary between final copy and process explanation.",
+      "proposed_change": "Add a naturalness rubric that flags process notes, generic adjectives, and repetitive rhythm as review-only issues.",
+      "expected_improvement": "Improve naturalness score without adding fixed replacement phrases.",
+      "risk": "Over-penalizing explanatory drafts may reduce useful scaffolding in early ideation sessions.",
+      "validation_plan": "Run naturalness-sensitive eval cases and compare naturalness_delta before applying.",
+      "predicted_metric": "naturalness_score improves while expected signal coverage remains stable",
+      "evidence_ids": [
+        "fail_dbabc3ddc133"
+      ],
+      "rollback_plan": "Revert to the previous harness component version.",
+      "proposal_id": "chg_bef9d7170580",
+      "created_at": "2026-06-11T04:13:50.659688+00:00",
+      "status": "ignored",
+      "reviewed_at": "2026-06-11T04:16:23.664994+00:00"
+    }
+  ],
+  "manifest_id": "manifest_8600659c46de",
+  "created_at": "2026-06-11T04:13:50.659688+00:00"
+}

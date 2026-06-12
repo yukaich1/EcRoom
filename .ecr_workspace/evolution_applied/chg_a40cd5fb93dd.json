@@ -1,0 +1,13 @@
+{
+  "applied_at": "2026-06-07T12:11:16.513483+00:00",
+  "manifest_id": "manifest_37b9db096d0e",
+  "session_id": "session_d6c9a74608e9",
+  "proposal_id": "chg_a40cd5fb93dd",
+  "target_component": "harness/agents/norm_steward.md",
+  "reviewer_note": "用户在创作助理改进建议中确认应用。",
+  "validation_plan": "Run platform adaptation eval cases and inspect risk grouping.",
+  "predicted_metric": "more precise norm comments with fewer generic warnings",
+  "diff_summary": "Record platform hard rules, soft conventions, and project rules separately.",
+  "rollback_target": "",
+  "status": "applied_pending_validation"
+}

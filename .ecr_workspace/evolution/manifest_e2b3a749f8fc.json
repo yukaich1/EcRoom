@@ -1,0 +1,39 @@
+{
+  "session_id": "session_8ebf9d689700",
+  "proposals": [
+    {
+      "target_component": "harness/agents/canon_keeper.md",
+      "failure_evidence": [
+        "**“又来了”可否再弱化主观情绪**，改为更中性的动作描述（如「又站在这里」），进一步压缩角色主观色彩。",
+        "**配图的“锋芒”过于具象化**，建议改为用光影或构图（如角色与路灯的距离）间接传达视线的锋利感，避免直接暗示情绪。",
+        "**转发文案“世界冷暖自知”可否再收敛**，改为纯客观的描述（如「雨天的路面总是反光的」），让转发者有更大的二次创作空间。",
+        "**角色边界的设定需在动作上再强化**，如「背影单薄」改为「雨水顺着背影滑落，像在计算什么」，让动作暗示其行动逻辑而非心理状态。",
+        "微博语境：避免蹭无关热搜、虚假信息、过度营销和侵犯权益内容。",
+        "叙事语境：角色口吻、世界观事实、剧情时间线应保持一致。"
+      ],
+      "root_cause": "Narrative constraints need explicit continuity checks.",
+      "targeted_fix": "Add canon consistency checklist before final rewrite.",
+      "expected_improvement": "Reduce out-of-character and timeline conflicts.",
+      "regression_risk": "May slow down short social posts that only lightly reference canon.",
+      "proposal_id": "chg_80ebe6e18e58",
+      "created_at": "2026-05-16T07:35:56.025434+00:00",
+      "status": "proposed"
+    },
+    {
+      "target_component": "harness/agents/norm_steward.md",
+      "failure_evidence": [
+        "微博语境：避免蹭无关热搜、虚假信息、过度营销和侵犯权益内容。",
+        "叙事语境：角色口吻、世界观事实、剧情时间线应保持一致。"
+      ],
+      "root_cause": "Norm advice must remain separate from creative preference.",
+      "targeted_fix": "Record platform hard rules, soft conventions, and project rules separately.",
+      "expected_improvement": "Better traceability and fewer overblocking suggestions.",
+      "regression_risk": "More nuanced output may require clearer UI grouping.",
+      "proposal_id": "chg_bec8a7d8919d",
+      "created_at": "2026-05-16T07:35:56.025449+00:00",
+      "status": "proposed"
+    }
+  ],
+  "manifest_id": "manifest_e2b3a749f8fc",
+  "created_at": "2026-05-16T07:35:56.025457+00:00"
+}

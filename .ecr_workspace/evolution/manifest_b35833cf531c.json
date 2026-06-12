@@ -1,0 +1,52 @@
+{
+  "session_id": "session_df5bc62919d8",
+  "proposals": [
+    {
+      "target_component": "harness/agents/draft_writer.md",
+      "failure_evidence": [
+        "初稿方向可以，但有些地方太像 AI 文案，需要更自然。"
+      ],
+      "root_cause": "Draft language is perceived as templated or generic.",
+      "targeted_fix": "Add anti-template rubric and user-approved examples.",
+      "expected_improvement": "Reduce manual rewrite distance and increase accept rate.",
+      "regression_risk": "May become too informal for serious long-form tasks.",
+      "proposal_id": "chg_ab7e7eb59396",
+      "created_at": "2026-05-16T06:28:47.631699+00:00",
+      "status": "proposed"
+    },
+    {
+      "target_component": "harness/agents/canon_keeper.md",
+      "failure_evidence": [
+        "按“设定一致性”检查：当前版本还需要用户反馈来确定取舍。",
+        "按“传播吸引力”检查：当前版本还需要用户反馈来确定取舍。",
+        "按“清晰度”检查：当前版本还需要用户反馈来确定取舍。",
+        "按“用户风格贴合度”检查：当前版本还需要用户反馈来确定取舍。",
+        "微博语境：避免蹭无关热搜、虚假信息、过度营销和侵犯权益内容。",
+        "叙事语境：角色口吻、世界观事实、剧情时间线应保持一致。"
+      ],
+      "root_cause": "Narrative constraints need explicit continuity checks.",
+      "targeted_fix": "Add canon consistency checklist before final rewrite.",
+      "expected_improvement": "Reduce out-of-character and timeline conflicts.",
+      "regression_risk": "May slow down short social posts that only lightly reference canon.",
+      "proposal_id": "chg_7e6a8789b55a",
+      "created_at": "2026-05-16T06:28:47.631710+00:00",
+      "status": "proposed"
+    },
+    {
+      "target_component": "harness/agents/norm_steward.md",
+      "failure_evidence": [
+        "微博语境：避免蹭无关热搜、虚假信息、过度营销和侵犯权益内容。",
+        "叙事语境：角色口吻、世界观事实、剧情时间线应保持一致。"
+      ],
+      "root_cause": "Norm advice must remain separate from creative preference.",
+      "targeted_fix": "Record platform hard rules, soft conventions, and project rules separately.",
+      "expected_improvement": "Better traceability and fewer overblocking suggestions.",
+      "regression_risk": "More nuanced output may require clearer UI grouping.",
+      "proposal_id": "chg_76d3a6a767a8",
+      "created_at": "2026-05-16T06:28:47.631715+00:00",
+      "status": "proposed"
+    }
+  ],
+  "manifest_id": "manifest_b35833cf531c",
+  "created_at": "2026-05-16T06:28:47.631720+00:00"
+}

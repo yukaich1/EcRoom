@@ -1,0 +1,48 @@
+{
+  "session_id": "session_d6c9a74608e9",
+  "proposals": [
+    {
+      "target_component": "harness/agents/canon_keeper.md",
+      "failure_evidence": [
+        "角色名可替换为「特工」或「女人」以强化设定感，但需确认世界观中角色性别/身份定位。",
+        "「看就完了」可改为「看就是」，更符合微博短句习惯，且语气更冷峻简洁。",
+        "字已极简，但可考虑加入剧情关键词（如「她来了。没什么好解释的，看这盘棋。」），若无违背世界观。",
+        "末句「看就完了」可改为「看下去」，若需暗示后续剧情发展。",
+        "建议加入可转发空间，如末句末尾加「、」或「、呢」，便于用户接续互动。",
+        "微博语境：避免蹭无关热搜、虚假信息、过度营销和侵犯权益内容。",
+        "叙事语境：角色口吻、世界观事实、剧情时间线应保持一致。",
+        "资料库提示：平台规范线索：用户提到“微博”，后续生成应自动召回并遵守该平台的表达习惯和发布边界。",
+        "资料库提示：用户自定义规则：不要夸张承诺"
+      ],
+      "root_cause": "Narrative constraints need explicit continuity checks.",
+      "targeted_fix": "Add canon consistency checklist before final rewrite.",
+      "expected_improvement": "Reduce out-of-character and timeline conflicts.",
+      "regression_risk": "May slow down short social posts that only lightly reference canon.",
+      "validation_plan": "Run character/worldbuilding eval cases and check norm/canon comments.",
+      "predicted_metric": "lower canon warning count without reducing draft completion",
+      "proposal_id": "chg_6a038a26298a",
+      "created_at": "2026-05-20T14:40:54.457793+00:00",
+      "status": "proposed"
+    },
+    {
+      "target_component": "harness/agents/norm_steward.md",
+      "failure_evidence": [
+        "微博语境：避免蹭无关热搜、虚假信息、过度营销和侵犯权益内容。",
+        "叙事语境：角色口吻、世界观事实、剧情时间线应保持一致。",
+        "资料库提示：平台规范线索：用户提到“微博”，后续生成应自动召回并遵守该平台的表达习惯和发布边界。",
+        "资料库提示：用户自定义规则：不要夸张承诺"
+      ],
+      "root_cause": "Norm advice must remain separate from creative preference.",
+      "targeted_fix": "Record platform hard rules, soft conventions, and project rules separately.",
+      "expected_improvement": "Better traceability and fewer overblocking suggestions.",
+      "regression_risk": "More nuanced output may require clearer UI grouping.",
+      "validation_plan": "Run platform adaptation eval cases and inspect risk grouping.",
+      "predicted_metric": "more precise norm comments with fewer generic warnings",
+      "proposal_id": "chg_a40cd5fb93dd",
+      "created_at": "2026-05-20T14:40:54.457793+00:00",
+      "status": "proposed"
+    }
+  ],
+  "manifest_id": "manifest_37b9db096d0e",
+  "created_at": "2026-05-20T14:40:54.457793+00:00"
+}

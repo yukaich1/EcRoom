@@ -1,0 +1,42 @@
+{
+  "session_id": "session_0998079465c6",
+  "proposals": [
+    {
+      "target_component": "harness/agents/canon_keeper.md",
+      "failure_evidence": [
+        "**时间魔法的代价**：建议在内核中补充\"每次使用时间魔法，她的银发会多一缕银丝，记忆碎片会在睡梦中浮现\"——既强化代价感，又为未来的\"衰老\"伏笔留空间。",
+        "**占星术的局限性**：登场文案中\"解读三分之二\"的设定可延伸为\"占星术无法预测涉及自身的事件\"，呼应她对预言术的忌讳，避免逻辑漏洞。",
+        "**社媒短版的冲突感**：可将\"有时候真相是把刀\"改为\"有时候真相是颗雷\"，更贴合她\"将世界视为数据\"的口吻，增加张力。",
+        "**遗迹挖掘的动机**：登场文案中\"第17星区的遗民\"可改为\"第17星区的幸存者\"，暗示她的调查可能导致更多人死去，强化\"她的魔法改变时间线\"的冲突。",
+        "**弱点的戏剧性**：建议在内核中补充\"她会在极度饥饿时失去魔法控制，袖口的魔法阵会失效5分钟\"，让黑巧克力的弱点不仅是笑点，还能成为潜在危机。",
+        "叙事语境：角色口吻、世界观事实、剧情时间线应保持一致。"
+      ],
+      "root_cause": "Narrative constraints need explicit continuity checks.",
+      "targeted_fix": "Add canon consistency checklist before final rewrite.",
+      "expected_improvement": "Reduce out-of-character and timeline conflicts.",
+      "regression_risk": "May slow down short social posts that only lightly reference canon.",
+      "validation_plan": "Run character/worldbuilding eval cases and check norm/canon comments.",
+      "predicted_metric": "lower canon warning count without reducing draft completion",
+      "proposal_id": "chg_1bcd446481a6",
+      "created_at": "2026-05-17T03:13:40.112706+00:00",
+      "status": "proposed"
+    },
+    {
+      "target_component": "harness/agents/norm_steward.md",
+      "failure_evidence": [
+        "叙事语境：角色口吻、世界观事实、剧情时间线应保持一致。"
+      ],
+      "root_cause": "Norm advice must remain separate from creative preference.",
+      "targeted_fix": "Record platform hard rules, soft conventions, and project rules separately.",
+      "expected_improvement": "Better traceability and fewer overblocking suggestions.",
+      "regression_risk": "More nuanced output may require clearer UI grouping.",
+      "validation_plan": "Run platform adaptation eval cases and inspect risk grouping.",
+      "predicted_metric": "more precise norm comments with fewer generic warnings",
+      "proposal_id": "chg_a71329d2a413",
+      "created_at": "2026-05-17T03:13:40.112706+00:00",
+      "status": "proposed"
+    }
+  ],
+  "manifest_id": "manifest_c0f660cf64da",
+  "created_at": "2026-05-17T03:13:40.112706+00:00"
+}

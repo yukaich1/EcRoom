@@ -1,0 +1,44 @@
+{
+  "session_id": "session_2ec4bf9fcb82",
+  "proposals": [
+    {
+      "target_component": "harness/agents/canon_keeper.md",
+      "failure_evidence": [
+        "**修改建议：**",
+        "**角色内核**：“千古寂寥”过于虚空，建议改为更具画面感的描述，如“眼底藏着未解的星辰”。",
+        "**登场文案**：“咒语的尽头，是另一个开始。”过于抽象，建议改为更直接且冷感的表述，如“知识的尽头，是更深的黑暗。”",
+        "**可传播短版**：“星光下的谜题，你解得开吗？”带有挑战性，建议改为更内敛的表达，如“她的智慧，只为自己点燃。”",
+        "**符号使用**：“✨”在B站动态中确实常见，但“**🌌**”和“**🔮**”可改为纯文字“星空”与“符文”，避免过度装饰。",
+        "叙事语境：角色口吻、世界观事实、剧情时间线应保持一致。",
+        "资料库提示：平台规范线索：用户提到“B站”，后续生成应自动召回并遵守该平台的表达习惯和发布边界。"
+      ],
+      "root_cause": "Narrative constraints need explicit continuity checks.",
+      "targeted_fix": "Add canon consistency checklist before final rewrite.",
+      "expected_improvement": "Reduce out-of-character and timeline conflicts.",
+      "regression_risk": "May slow down short social posts that only lightly reference canon.",
+      "validation_plan": "Run character/worldbuilding eval cases and check norm/canon comments.",
+      "predicted_metric": "lower canon warning count without reducing draft completion",
+      "proposal_id": "chg_affd6db217e0",
+      "created_at": "2026-05-17T03:37:01.136637+00:00",
+      "status": "proposed"
+    },
+    {
+      "target_component": "harness/agents/norm_steward.md",
+      "failure_evidence": [
+        "叙事语境：角色口吻、世界观事实、剧情时间线应保持一致。",
+        "资料库提示：平台规范线索：用户提到“B站”，后续生成应自动召回并遵守该平台的表达习惯和发布边界。"
+      ],
+      "root_cause": "Norm advice must remain separate from creative preference.",
+      "targeted_fix": "Record platform hard rules, soft conventions, and project rules separately.",
+      "expected_improvement": "Better traceability and fewer overblocking suggestions.",
+      "regression_risk": "More nuanced output may require clearer UI grouping.",
+      "validation_plan": "Run platform adaptation eval cases and inspect risk grouping.",
+      "predicted_metric": "more precise norm comments with fewer generic warnings",
+      "proposal_id": "chg_d268de92e3e2",
+      "created_at": "2026-05-17T03:37:01.136637+00:00",
+      "status": "proposed"
+    }
+  ],
+  "manifest_id": "manifest_5ae7edbace44",
+  "created_at": "2026-05-17T03:37:01.136637+00:00"
+}

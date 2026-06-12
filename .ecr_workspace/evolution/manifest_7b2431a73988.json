@@ -1,0 +1,50 @@
+{
+  "session_id": "session_dbece38faf1f",
+  "proposals": [
+    {
+      "target_component": "harness/agents/canon_keeper.md",
+      "failure_evidence": [
+        "**受众定位**：建议微调为「斜杠青年」风格，藤椅靠垫可补充具体品牌（如「宜家的米色靠垫」），避免模糊化。",
+        "**专属感强化**：小红书版本可保留「谁都能坐，但只有我会发呆」的细节，微博版本可简化为「阳台改造后，这个座位只有我配得上」。",
+        "**小红书工具化**：增加「工具清单」段落（如「靠垫：宜家的米色；茶具：陶瓷杯；植物：多肉」）提升实用性。",
+        "**微博互动性**：可加「#求同款靠垫#」或「晒晒你的阳台改造」提高转发率，但避免生硬植入。",
+        "**情绪平衡**：小红书版本可加「发呆时顺便码字」的细节，丰富场景；微博版本可简化为「阳光+茶+旧藤椅=仪式感」。",
+        "微博语境：避免蹭无关热搜、虚假信息、过度营销和侵犯权益内容。",
+        "小红书语境：强调真实分享，商业利益相关需要清楚表达。",
+        "叙事语境：角色口吻、世界观事实、剧情时间线应保持一致。",
+        "资料库提示：平台规范线索：用户提到“小红书”，后续生成应自动召回并遵守该平台的表达习惯和发布边界。",
+        "资料库提示：平台规范线索：用户提到“微博”，后续生成应自动召回并遵守该平台的表达习惯和发布边界。",
+        "资料库提示：用户自定义规则：别像模板，禁止夸张承诺",
+        "资料库提示：用户自定义规则：夸张承诺"
+      ],
+      "root_cause": "Narrative constraints need explicit continuity checks.",
+      "targeted_fix": "Add canon consistency checklist before final rewrite.",
+      "expected_improvement": "Reduce out-of-character and timeline conflicts.",
+      "regression_risk": "May slow down short social posts that only lightly reference canon.",
+      "proposal_id": "chg_0dc072de0899",
+      "created_at": "2026-05-16T12:59:56.385871+00:00",
+      "status": "proposed"
+    },
+    {
+      "target_component": "harness/agents/norm_steward.md",
+      "failure_evidence": [
+        "微博语境：避免蹭无关热搜、虚假信息、过度营销和侵犯权益内容。",
+        "小红书语境：强调真实分享，商业利益相关需要清楚表达。",
+        "叙事语境：角色口吻、世界观事实、剧情时间线应保持一致。",
+        "资料库提示：平台规范线索：用户提到“小红书”，后续生成应自动召回并遵守该平台的表达习惯和发布边界。",
+        "资料库提示：平台规范线索：用户提到“微博”，后续生成应自动召回并遵守该平台的表达习惯和发布边界。",
+        "资料库提示：用户自定义规则：别像模板，禁止夸张承诺",
+        "资料库提示：用户自定义规则：夸张承诺"
+      ],
+      "root_cause": "Norm advice must remain separate from creative preference.",
+      "targeted_fix": "Record platform hard rules, soft conventions, and project rules separately.",
+      "expected_improvement": "Better traceability and fewer overblocking suggestions.",
+      "regression_risk": "More nuanced output may require clearer UI grouping.",
+      "proposal_id": "chg_be8c5afaf7cd",
+      "created_at": "2026-05-16T12:59:56.385871+00:00",
+      "status": "proposed"
+    }
+  ],
+  "manifest_id": "manifest_7b2431a73988",
+  "created_at": "2026-05-16T12:59:56.385871+00:00"
+}

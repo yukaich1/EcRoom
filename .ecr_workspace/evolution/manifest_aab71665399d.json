@@ -1,0 +1,40 @@
+{
+  "session_id": "session_157068588107",
+  "proposals": [
+    {
+      "target_component": "harness/agents/canon_keeper.md",
+      "failure_evidence": [
+        "\"路人甲（无名氏序列·9）\" 可改为更具辨识度的称谓，如\"某个看不清脸的人（无名氏序列·9）\"，避免\"路人甲\"过于泛化",
+        "第二句可调整为更具冲击力的对比，如\"第一种，总爱把时间浪费在借口里；第二种，只会把借口丢进时间里\"",
+        "转发语\"你见过的最'无名'的人\" 中的引号可去掉，避免过度强调\"无名\"",
+        "标签可增加一条\"#这个人你见过吗\"，提升互动性",
+        "末尾\"—\"改为\"——\"，符合中文标点规范",
+        "微博语境：避免蹭无关热搜、虚假信息、过度营销和侵犯权益内容。",
+        "叙事语境：角色口吻、世界观事实、剧情时间线应保持一致。"
+      ],
+      "root_cause": "Narrative constraints need explicit continuity checks.",
+      "targeted_fix": "Add canon consistency checklist before final rewrite.",
+      "expected_improvement": "Reduce out-of-character and timeline conflicts.",
+      "regression_risk": "May slow down short social posts that only lightly reference canon.",
+      "proposal_id": "chg_04d430bed84a",
+      "created_at": "2026-05-16T07:19:39.255409+00:00",
+      "status": "proposed"
+    },
+    {
+      "target_component": "harness/agents/norm_steward.md",
+      "failure_evidence": [
+        "微博语境：避免蹭无关热搜、虚假信息、过度营销和侵犯权益内容。",
+        "叙事语境：角色口吻、世界观事实、剧情时间线应保持一致。"
+      ],
+      "root_cause": "Norm advice must remain separate from creative preference.",
+      "targeted_fix": "Record platform hard rules, soft conventions, and project rules separately.",
+      "expected_improvement": "Better traceability and fewer overblocking suggestions.",
+      "regression_risk": "More nuanced output may require clearer UI grouping.",
+      "proposal_id": "chg_0facd531f001",
+      "created_at": "2026-05-16T07:19:39.255438+00:00",
+      "status": "proposed"
+    }
+  ],
+  "manifest_id": "manifest_aab71665399d",
+  "created_at": "2026-05-16T07:19:39.255453+00:00"
+}

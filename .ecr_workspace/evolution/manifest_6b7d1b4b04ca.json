@@ -1,0 +1,40 @@
+{
+  "session_id": "session_c249f7eb67f3",
+  "proposals": [
+    {
+      "target_component": "harness/agents/canon_keeper.md",
+      "failure_evidence": [
+        "\"比约定时间早三分钟\"改为\"比所有人想象得更早\"，加强\"早\"的张力但不解释原因。",
+        "\"比任何人想象得更冷静\"改为\"从不表演冷静\"，避免直接形容词，增加角色行为暗示。",
+        "第二段改为\"——审判官。现场目击。\"，简化冒号结构，直接给出身份暗示，保持克制。",
+        "结尾加上\"#新角色登场#\"标签，保持传播属性但不干扰文案本身。",
+        "若需强化\"目击报告\"感，可将第二段改为\"现场笔录：审判官。\"，更像档案记录。",
+        "微博语境：避免蹭无关热搜、虚假信息、过度营销和侵犯权益内容。",
+        "叙事语境：角色口吻、世界观事实、剧情时间线应保持一致。"
+      ],
+      "root_cause": "Narrative constraints need explicit continuity checks.",
+      "targeted_fix": "Add canon consistency checklist before final rewrite.",
+      "expected_improvement": "Reduce out-of-character and timeline conflicts.",
+      "regression_risk": "May slow down short social posts that only lightly reference canon.",
+      "proposal_id": "chg_52411de044c4",
+      "created_at": "2026-05-16T07:36:11.982863+00:00",
+      "status": "proposed"
+    },
+    {
+      "target_component": "harness/agents/norm_steward.md",
+      "failure_evidence": [
+        "微博语境：避免蹭无关热搜、虚假信息、过度营销和侵犯权益内容。",
+        "叙事语境：角色口吻、世界观事实、剧情时间线应保持一致。"
+      ],
+      "root_cause": "Norm advice must remain separate from creative preference.",
+      "targeted_fix": "Record platform hard rules, soft conventions, and project rules separately.",
+      "expected_improvement": "Better traceability and fewer overblocking suggestions.",
+      "regression_risk": "More nuanced output may require clearer UI grouping.",
+      "proposal_id": "chg_5aff4556d7b8",
+      "created_at": "2026-05-16T07:36:11.982872+00:00",
+      "status": "proposed"
+    }
+  ],
+  "manifest_id": "manifest_6b7d1b4b04ca",
+  "created_at": "2026-05-16T07:36:11.982877+00:00"
+}

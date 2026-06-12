@@ -1,0 +1,58 @@
+{
+  "session_id": "session_619f4cbf534d",
+  "proposals": [
+    {
+      "target_component": "harness/agents/canon_keeper.md",
+      "failure_evidence": [
+        "已将编辑过程说明从正文中移出，只保留可继续打磨的正文。",
+        "**修改建议：**",
+        "城市简介中“黑色玻璃塔”可具体化为“由魔女薇拉的鲜血凝结而成的黑曜石塔”，增强魔女血脉的连贯性。",
+        "“清醒者能在钟声中看到死去的邻居、未来的自己”可改为“能看到死去的邻居、未来的自己和那条被反复重演的一天”，避免“死去的邻居”过于直接。",
+        "核心冲突2“薇拉不是施虐者”可补充一句“她的血液是潮汐钟的能源”，明确因果关系。",
+        "剧情钩子1《碎镜协议》可改为“她在书页上发现了一段用魔女血液写成的密码”，强化魔女血脉的线索。",
+        "自然度诊断：1.00。未发现明显模板化或反馈响应风险。",
+        "叙事语境：角色口吻、世界观事实、剧情时间线应保持一致。",
+        "**城市简介** 第一句改为\"永夜镜城是一座被时间反复咀嚼的城市\"，\"吞噬\"显得过于主观，\"反复咀嚼\"更贴合钟声循环的设定。",
+        "**城市简介** 薇拉的介绍中\"实际上\"三字显得多余，直接从\"这座城市的缔造者薇拉\"开始更流畅，避免与前文的\"传说中\"形成对立感。",
+        "**核心冲突** 第二条冲突中\"真身\"可改为\"本体\"，更符合魔女这一角色的神秘性和被动性，避免\"真身\"有刻意强调的语气。",
+        "**核心冲突** 第三条冲突最后一句\"或许只能通过打破这座城市的循环来实现\"可改为\"或许只能通过打破这座城市的循环，让时间停止流动\"，更具体化行动方向，避免空泛。",
+        "**剧情钩子1** 镜子背后\"无数双眼睛正在注视着她\"的细节过于直接，建议改为\"镜子背后传来轻微的刮擦声，仿佛有什么东西正在爬出墙面\"，保持悬念感而不揭示过多。",
+        "自然度诊断：1.00。未发现明显模板化或反馈响应风险。",
+        "叙事语境：角色口吻、世界观事实、剧情时间线应保持一致。"
+      ],
+      "root_cause": "Narrative constraints need explicit continuity checks.",
+      "proposed_change": "Add canon consistency checklist before final rewrite.",
+      "expected_improvement": "Reduce out-of-character and timeline conflicts.",
+      "risk": "May slow down short social posts that only lightly reference canon.",
+      "validation_plan": "Run character/worldbuilding eval cases and check norm/canon comments.",
+      "predicted_metric": "lower canon warning count without reducing draft completion",
+      "evidence_ids": [],
+      "rollback_plan": "Revert to the previous harness component version.",
+      "proposal_id": "chg_2e9091923423",
+      "created_at": "2026-06-07T13:03:03.320888+00:00",
+      "status": "needs_validation",
+      "reviewed_at": "2026-06-07T13:03:30.058822+00:00"
+    },
+    {
+      "target_component": "harness/agents/norm_steward.md",
+      "failure_evidence": [
+        "叙事语境：角色口吻、世界观事实、剧情时间线应保持一致。",
+        "叙事语境：角色口吻、世界观事实、剧情时间线应保持一致。"
+      ],
+      "root_cause": "Norm advice must remain separate from creative preference.",
+      "proposed_change": "Record platform hard rules, soft conventions, and project rules separately.",
+      "expected_improvement": "Better traceability and fewer overblocking suggestions.",
+      "risk": "More nuanced output may require clearer UI grouping.",
+      "validation_plan": "Run platform adaptation eval cases and inspect risk grouping.",
+      "predicted_metric": "more precise norm comments with fewer generic warnings",
+      "evidence_ids": [],
+      "rollback_plan": "Revert to the previous harness component version.",
+      "proposal_id": "chg_fd53f607ef77",
+      "created_at": "2026-06-07T13:03:03.320888+00:00",
+      "status": "needs_validation",
+      "reviewed_at": "2026-06-07T13:03:30.582986+00:00"
+    }
+  ],
+  "manifest_id": "manifest_71674cdbcb4b",
+  "created_at": "2026-06-07T13:03:03.320888+00:00"
+}

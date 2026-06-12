@@ -1,0 +1,42 @@
+{
+  "session_id": "session_b9401e7cb16e",
+  "proposals": [
+    {
+      "target_component": "harness/agents/canon_keeper.md",
+      "failure_evidence": [
+        "小红书\"阳光不是用来晒的，是用来借的\"这句转折太常见，改为\"这束光像借来的，不烫手也不耽误事\"更具角色特色。",
+        "小红书正文\"时间会变成一种固体\"过于抽象，改为\"时间在这里停了一拍，像被杯子摁住了\"更具画面感和质感。",
+        "微博\"有人晒太阳晒到皮肤起泡\"太通俗，改为\"有人晒太阳晒到骨头发痒\"更符合角色反讽口吻。",
+        "两条文案结尾\"还债\"语义重复，微博改为\"这种‘慢’不是矫情，是拖延症的反面教材\"更揭示角色内心冲突。",
+        "小红书最后一句\"今天够用了\"太平淡，改为\"今天的光，刚好够我把这一页看完\"更贴合角色对细节的精准把握。",
+        "微博语境：避免蹭无关热搜、虚假信息、过度营销和侵犯权益内容。",
+        "小红书语境：强调真实分享，商业利益相关需要清楚表达。",
+        "叙事语境：角色口吻、世界观事实、剧情时间线应保持一致。"
+      ],
+      "root_cause": "Narrative constraints need explicit continuity checks.",
+      "targeted_fix": "Add canon consistency checklist before final rewrite.",
+      "expected_improvement": "Reduce out-of-character and timeline conflicts.",
+      "regression_risk": "May slow down short social posts that only lightly reference canon.",
+      "proposal_id": "chg_1ed792a1ad50",
+      "created_at": "2026-05-16T12:58:37.385514+00:00",
+      "status": "proposed"
+    },
+    {
+      "target_component": "harness/agents/norm_steward.md",
+      "failure_evidence": [
+        "微博语境：避免蹭无关热搜、虚假信息、过度营销和侵犯权益内容。",
+        "小红书语境：强调真实分享，商业利益相关需要清楚表达。",
+        "叙事语境：角色口吻、世界观事实、剧情时间线应保持一致。"
+      ],
+      "root_cause": "Norm advice must remain separate from creative preference.",
+      "targeted_fix": "Record platform hard rules, soft conventions, and project rules separately.",
+      "expected_improvement": "Better traceability and fewer overblocking suggestions.",
+      "regression_risk": "More nuanced output may require clearer UI grouping.",
+      "proposal_id": "chg_73e412c837b1",
+      "created_at": "2026-05-16T12:58:37.385514+00:00",
+      "status": "proposed"
+    }
+  ],
+  "manifest_id": "manifest_72c1465b66f4",
+  "created_at": "2026-05-16T12:58:37.385514+00:00"
+}

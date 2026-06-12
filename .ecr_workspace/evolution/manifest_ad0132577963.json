@@ -1,0 +1,24 @@
+{
+  "session_id": "session_3a13f42d4fe3",
+  "proposals": [
+    {
+      "target_component": "harness/agents/canon_keeper.md",
+      "failure_evidence": [
+        "**隐形受众的具象化**：将“徽章追踪”的“创意触发点”具体化为可视化的用户画像（如行为轨迹、触发时长），而非抽象标签。",
+        "**\"数据森林\"的种子选择**：建议明确“种子”为短视频片段（15-30秒），兼顾可分享性与碎片化消费习惯。",
+        "**实验主题的边界**：“有用的无聊”需补充可量化的“用”（如解决用户特定痛点），避免空泛（如“打发时间”）。",
+        "**碎片形象的角色**：改为“内容DNA”，通过其变化（形状/颜色）直观展示内容在传播过程中的变异。",
+        "**交互设计**：在全息图上增加可拖拽的“土壤层级”选项（如“深度解析/碎片娱乐”），强化用户主动参与感。"
+      ],
+      "root_cause": "Narrative constraints need explicit continuity checks.",
+      "targeted_fix": "Add canon consistency checklist before final rewrite.",
+      "expected_improvement": "Reduce out-of-character and timeline conflicts.",
+      "regression_risk": "May slow down short social posts that only lightly reference canon.",
+      "proposal_id": "chg_c64fa1b072fa",
+      "created_at": "2026-05-16T12:33:42.617661+00:00",
+      "status": "proposed"
+    }
+  ],
+  "manifest_id": "manifest_ad0132577963",
+  "created_at": "2026-05-16T12:33:42.617661+00:00"
+}

@@ -1,0 +1,40 @@
+{
+  "session_id": "session_7c89375432e4",
+  "proposals": [
+    {
+      "target_component": "harness/agents/canon_keeper.md",
+      "failure_evidence": [
+        "标题「零来了」可改为更具体的角色称呼（如「迟零」或「零少」），避免文案过于抽象。",
+        "结尾可加一句“祂什么都没说”，与开头「没有旁白」形成呼应，强化角色张力。",
+        "如果角色有特殊设定（如记忆缺失、机械身体等），可在第二句补一个细节（如「只有记忆碎片」），拉开与通用悬疑受众的距离。",
+        "配图建议用角色全身剪影或半身近景，避免局部特写过于抽象，影响普通用户理解。",
+        "可在文案末尾加一个轻量转发提示（如「转发让更多人看到祂」），但保持简短克制。",
+        "微博语境：避免蹭无关热搜、虚假信息、过度营销和侵犯权益内容。",
+        "叙事语境：角色口吻、世界观事实、剧情时间线应保持一致。"
+      ],
+      "root_cause": "Narrative constraints need explicit continuity checks.",
+      "targeted_fix": "Add canon consistency checklist before final rewrite.",
+      "expected_improvement": "Reduce out-of-character and timeline conflicts.",
+      "regression_risk": "May slow down short social posts that only lightly reference canon.",
+      "proposal_id": "chg_7343d8799752",
+      "created_at": "2026-05-16T07:21:46.133970+00:00",
+      "status": "proposed"
+    },
+    {
+      "target_component": "harness/agents/norm_steward.md",
+      "failure_evidence": [
+        "微博语境：避免蹭无关热搜、虚假信息、过度营销和侵犯权益内容。",
+        "叙事语境：角色口吻、世界观事实、剧情时间线应保持一致。"
+      ],
+      "root_cause": "Norm advice must remain separate from creative preference.",
+      "targeted_fix": "Record platform hard rules, soft conventions, and project rules separately.",
+      "expected_improvement": "Better traceability and fewer overblocking suggestions.",
+      "regression_risk": "More nuanced output may require clearer UI grouping.",
+      "proposal_id": "chg_da39ec0b5462",
+      "created_at": "2026-05-16T07:21:46.134004+00:00",
+      "status": "proposed"
+    }
+  ],
+  "manifest_id": "manifest_7536aace555f",
+  "created_at": "2026-05-16T07:21:46.134021+00:00"
+}

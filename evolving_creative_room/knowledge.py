@@ -112,6 +112,22 @@ class KnowledgeBase:
                     self._index_dict(row)
         return changed
 
+    def delete_records_for_session(self, session_id: str) -> int:
+        session_tag = f"session:{session_id}"
+        rows = self._read_all()
+        kept = []
+        removed = 0
+        for row in rows:
+            tags = [str(item) for item in row.get("tags", []) or []]
+            if session_tag in tags:
+                removed += 1
+                continue
+            kept.append(row)
+        if removed:
+            self._write_all(kept)
+            self.rebuild_index()
+        return removed
+
     def rebuild_index(self) -> dict[str, object]:
         count = 0
         for record in self._read_all():

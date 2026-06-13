@@ -26,6 +26,7 @@ from evolving_creative_room.capabilities import (
     load_capability_packages,
     seed_missing_capability_packages,
 )
+from evolving_creative_room.context_isolation import filter_knowledge_for_session, filter_memory_for_session
 from evolving_creative_room.data_health import WorkspaceDoctor
 from evolving_creative_room.evaluation import DEFAULT_EVAL_CASES, EvaluationStore, compare_eval_runs, new_eval_run, score_state
 from evolving_creative_room.evolution.manifest import HarnessEvolver
@@ -42,6 +43,10 @@ from evolving_creative_room.skills import SKILL_ALIASES, get_skill, load_skill_p
 from evolving_creative_room.sources import import_public_page
 from evolving_creative_room.storage import atomic_write_bytes, atomic_write_json
 from evolving_creative_room.models import AgentRole, CreativeIntent, CreativeState, FeedbackSignal, HumanFeedback, new_id, state_to_dict, utc_now_iso
+
+
+REVISION_MAX_TOKENS = 5200
+CONTINUATION_MAX_TOKENS = 4200
 
 
 class CreativeRoomRunner:
@@ -195,15 +200,14 @@ class CreativeRoomRunner:
         canvas_path = self.workspace / "short_term_canvas.mmd"
         session_meta = next((item for item in self.memory.list_sessions(include_completed=True) if item.get("session_id") == session_id), {})
         completed = bool(session_meta.get("completed"))
-        learning_candidates = self.learning.list(session_id=session_id) if completed else []
         manifest = self.latest_manifest(session_id)
         return {
             "state": state_to_dict(state),
             "session": session_meta,
             "manifest": manifest,
             "memory": self.memory.list_records(limit=40, project_id=state.project_id),
-            "learning": {"candidates": learning_candidates},
-            "review": {"items": self._review_items(session_id, learning_candidates=learning_candidates, manifest=manifest) if completed else []},
+            "learning": {"candidates": []},
+            "review": {"items": self._review_items(session_id, manifest=manifest) if completed else []},
             "workflow_trace": self._workflow_trace(state),
             "agent_events": self._agent_events_view(state),
             "shared_context": self._shared_context_view(state),
@@ -308,6 +312,28 @@ class CreativeRoomRunner:
                 item["display_content"] = content.removeprefix("偏好：").removeprefix("长期工作偏好：")
                 records.append(item)
         return {"preferences": records}
+
+    def learned_items_view(self) -> dict[str, object]:
+        items: list[dict[str, object]] = []
+        items.extend(self._learned_evolution_items())
+        items.extend(self._learned_memory_items())
+        items.sort(key=lambda item: str(item.get("created_at", "")), reverse=True)
+        return {"items": items}
+
+    def delete_learned_item(self, item_id: str) -> dict[str, object]:
+        if not item_id:
+            raise ValueError("missing_learned_item_id")
+        if item_id.startswith("evolution:"):
+            proposal_id = item_id.removeprefix("evolution:")
+            result = self._delete_evolution_learning(proposal_id)
+            self.metrics.record("learned_item_deleted", metadata={"item_id": item_id, "kind": "evolution"})
+            return result
+        if item_id.startswith("memory:"):
+            record_id = item_id.removeprefix("memory:")
+            changed = self.memory.review_record(record_id, "deleted")
+            self.metrics.record("learned_item_deleted", metadata={"item_id": item_id, "kind": "memory", "changed": changed})
+            return {"deleted": changed, "item_id": item_id, "record_id": record_id, "kind": "memory"}
+        raise ValueError(f"Unknown learned item: {item_id}")
 
     def delete_preference(self, record_id: str) -> dict[str, object]:
         changed = self.memory.review_record(record_id, "deleted")
@@ -668,7 +694,7 @@ class CreativeRoomRunner:
             candidate_skill_root = candidate_harness_root / "skills"
             metadata["candidate_harness_path"] = str(candidate_harness_root)
         else:
-            candidate_note = "候选 harness 修改：强化资料召回、平台规范检查和用户偏好记忆。"
+            candidate_note = "候选 harness 修改：强化资料召回、平台规范检查和会话边界控制。"
             metadata["proposal_id"] = ""
 
         baseline = self._run_cases(DEFAULT_EVAL_CASES, kind="ab_baseline", metadata=metadata)
@@ -746,21 +772,7 @@ class CreativeRoomRunner:
             work_category=work_category,
         )
         if completed:
-            state = self.memory.load_state(session_id)
-            memory_policy = self._memory_policy()
-            candidates = self.learning.suggest_from_state(
-                state,
-                min_confidence=float(memory_policy.get("min_confidence", 0.35)),
-                limit=int(memory_policy.get("candidate_limit", 3)),
-            )
-            if candidates:
-                self.metrics.record(
-                    "learning_candidate_created",
-                    value=float(len(candidates)),
-                    session_id=session_id,
-                    project_id=state.project_id,
-                    metadata={"source": "completion"},
-                )
+            result["learning_candidate_created"] = 0
         else:
             if revoke_learning_on_reopen:
                 result["revoked_learning_count"] = self.learning.revoke_for_session(session_id, status="hidden")
@@ -770,7 +782,7 @@ class CreativeRoomRunner:
                 result["revoked_confirmed_learning_count"] = 0
         return result
 
-    def delete_session(self, session_id: str, mode: str = "revoke_memory") -> dict[str, object]:
+    def delete_session(self, session_id: str, mode: str = "history") -> dict[str, object]:
         result = self.memory.delete_session(session_id, mode=mode)
         if mode in {"revoke_memory", "full"}:
             result["revoked_learning_count"] = self.learning.revoke_for_session(session_id)
@@ -783,6 +795,11 @@ class CreativeRoomRunner:
                 if data.get("session_id") == session_id:
                     path.unlink()
                     removed_manifests += 1
+            result["removed_knowledge_count"] = self.knowledge.delete_records_for_session(session_id)
+            result["removed_post_count"] = self._delete_posts_for_session(session_id)
+        else:
+            result["removed_knowledge_count"] = 0
+            result["removed_post_count"] = 0
         result["removed_manifests"] = removed_manifests
         return result
 
@@ -849,18 +866,9 @@ class CreativeRoomRunner:
         self,
         session_id: str,
         *,
-        learning_candidates: list[dict[str, object]],
         manifest: dict[str, object] | None,
     ) -> list[dict[str, object]]:
         items: list[dict[str, object]] = []
-        pending_learning = [candidate for candidate in learning_candidates if candidate.get("status") == "candidate"]
-        pending_learning.sort(key=lambda item: float(item.get("confidence", 0.0) or 0.0), reverse=True)
-        for candidate in pending_learning[:3]:
-            if candidate.get("status") != "candidate":
-                continue
-            item = self._learning_review_item(candidate)
-            if item:
-                items.append(item)
         workflow_items: list[dict[str, object]] = []
         for proposal in (manifest or {}).get("proposals", []) if isinstance(manifest, dict) else []:
             if not isinstance(proposal, dict):
@@ -871,7 +879,7 @@ class CreativeRoomRunner:
             if item:
                 workflow_items.append(item)
         items.extend(workflow_items[:2])
-        return items[:5]
+        return items[:2]
 
     def _learning_review_item(self, candidate: dict[str, object]) -> dict[str, object] | None:
         candidate_id = str(candidate.get("candidate_id", "")).strip()
@@ -1047,6 +1055,120 @@ class CreativeRoomRunner:
                 return candidate
         raise ValueError(f"Learning candidate not found: {candidate_id}")
 
+    def _learned_evolution_items(self) -> list[dict[str, object]]:
+        items: list[dict[str, object]] = []
+        for path in (self.workspace / "evolution").glob("manifest_*.json"):
+            data = json.loads(path.read_text(encoding="utf-8"))
+            session_id = str(data.get("session_id", ""))
+            manifest_id = str(data.get("manifest_id", ""))
+            for proposal in data.get("proposals", []) if isinstance(data.get("proposals", []), list) else []:
+                if not isinstance(proposal, dict):
+                    continue
+                status = str(proposal.get("status", ""))
+                if status not in {"applied_pending_validation", "applied", "validated"}:
+                    continue
+                proposal_id = str(proposal.get("proposal_id", ""))
+                title, suggestion, impact, _scope = self._workflow_user_copy(proposal)
+                items.append(
+                    {
+                        "item_id": f"evolution:{proposal_id}",
+                        "kind": "evolution",
+                        "title": title,
+                        "content": suggestion,
+                        "effect": impact,
+                        "status": status,
+                        "session_id": session_id,
+                        "manifest_id": manifest_id,
+                        "created_at": proposal.get("reviewed_at") or proposal.get("created_at") or data.get("created_at", ""),
+                        "target": proposal.get("target_component", ""),
+                    }
+                )
+        return items
+
+    def _learned_memory_items(self) -> list[dict[str, object]]:
+        items: list[dict[str, object]] = []
+        for record in self.memory.list_records(limit=500, include_rejected=False):
+            layer = str(record.get("layer", ""))
+            if layer not in {"L2", "L3"}:
+                continue
+            if record.get("status", "active") != "active":
+                continue
+            tags = [str(item) for item in record.get("tags", []) or []]
+            if "confirmed" not in tags:
+                continue
+            content = str(record.get("content", "")).strip()
+            if not content:
+                continue
+            items.append(
+                {
+                    "item_id": f"memory:{record.get('record_id', '')}",
+                    "kind": "memory_rule",
+                    "title": "已确认规则" if layer == "L2" else "已确认长期规则",
+                    "content": content.removeprefix("项目规则：").removeprefix("偏好："),
+                    "effect": "这条记录会进入后续检索，用来约束 EcRoom 的创作协作方式。",
+                    "status": record.get("status", "active"),
+                    "session_id": (record.get("evidence_ids") or [""])[0],
+                    "created_at": record.get("created_at", ""),
+                    "target": " / ".join(tag for tag in tags if tag not in {"confirmed", "scope:project", "scope:global"}) or layer,
+                }
+            )
+        return items
+
+    def _delete_evolution_learning(self, proposal_id: str) -> dict[str, object]:
+        for path in (self.workspace / "evolution").glob("manifest_*.json"):
+            data = json.loads(path.read_text(encoding="utf-8"))
+            proposals = data.get("proposals", [])
+            if not isinstance(proposals, list):
+                continue
+            for proposal in proposals:
+                if not isinstance(proposal, dict) or proposal.get("proposal_id") != proposal_id:
+                    continue
+                removed_amendment = self._remove_harness_amendment(proposal)
+                proposal["status"] = "deleted"
+                proposal["deleted_at"] = utc_now_iso()
+                atomic_write_json(path, data)
+                self._mark_applied_log_deleted(proposal_id)
+                return {
+                    "deleted": True,
+                    "item_id": f"evolution:{proposal_id}",
+                    "proposal_id": proposal_id,
+                    "removed_amendment": removed_amendment,
+                }
+        raise ValueError(f"Evolution learning not found: {proposal_id}")
+
+    def _remove_harness_amendment(self, proposal: dict[str, object]) -> bool:
+        target_component = str(proposal.get("target_component", "")).strip()
+        proposal_id = str(proposal.get("proposal_id", "")).strip()
+        if not target_component or not proposal_id:
+            return False
+        target = (self.project_root / target_component).resolve()
+        harness_root = (self.project_root / "harness").resolve()
+        try:
+            target.relative_to(harness_root)
+        except ValueError:
+            return False
+        if not target.exists():
+            return False
+        original = target.read_text(encoding="utf-8")
+        pattern = re.compile(
+            rf"\n{{0,2}}## Evolution Amendment\n\n(?:(?!\n## Evolution Amendment\n).)*?Proposal：{re.escape(proposal_id)}(?:(?!\n## Evolution Amendment\n).)*?(?=\n## Evolution Amendment\n|\Z)",
+            re.S,
+        )
+        updated, count = pattern.subn("", original, count=1)
+        if not count:
+            return False
+        target.write_text(updated.rstrip() + "\n", encoding="utf-8")
+        return True
+
+    def _mark_applied_log_deleted(self, proposal_id: str) -> None:
+        log_path = self.workspace / "evolution_applied" / f"{proposal_id}.json"
+        if not log_path.exists():
+            return
+        data = json.loads(log_path.read_text(encoding="utf-8"))
+        data["status"] = "deleted"
+        data["deleted_at"] = utc_now_iso()
+        atomic_write_json(log_path, data)
+
     def _latest_manifest_entry(self, session_id: str) -> tuple[Path, dict[str, object]] | None:
         manifests: list[tuple[float, Path, dict[str, object]]] = []
         for path in (self.workspace / "evolution").glob("manifest_*.json"):
@@ -1207,6 +1329,18 @@ class CreativeRoomRunner:
     def _write_published_posts(self, posts: list[dict[str, object]]) -> None:
         atomic_write_json(self.published_posts_path, posts)
 
+    def _delete_posts_for_session(self, session_id: str) -> int:
+        posts = self._read_published_posts()
+        kept = [
+            post
+            for post in posts
+            if str(post.get("session_id", "")) != session_id and str(post.get("work_id", "")) != session_id
+        ]
+        removed = len(posts) - len(kept)
+        if removed:
+            self._write_published_posts(kept)
+        return removed
+
     def _append_feedback(
         self,
         state: CreativeState,
@@ -1235,6 +1369,13 @@ class CreativeRoomRunner:
         if not base_text.strip():
             return False
         feedback_text = feedback.note or "用户希望继续修改。"
+        if feedback.signal == FeedbackSignal.CONTINUE or _is_continue_feedback(feedback_text):
+            return self._continue_from_feedback(
+                state,
+                feedback=feedback,
+                base_text=base_text,
+                parent_version_id=parent_version_id,
+            )
         if self.llm:
             try:
                 response = self.llm.chat(
@@ -1249,7 +1390,7 @@ class CreativeRoomRunner:
                             + state.intent.raw_request
                             + "\n用户偏好："
                             + ("；".join(state.intent.user_preferences) or "暂无")
-                            + "\n已沉淀上下文："
+                            + "\n当前会话上下文："
                             + ("；".join(state.facts[:10]) or "暂无")
                             + "\n用户反馈："
                             + feedback_text
@@ -1259,7 +1400,7 @@ class CreativeRoomRunner:
                             + "\n\n请生成修改后的完整版本。保留有效内容，明显响应用户反馈。",
                         ),
                     ],
-                    max_tokens=1300,
+                    max_tokens=REVISION_MAX_TOKENS,
                     temperature=0.7,
                 )
             except LLMError as exc:
@@ -1277,6 +1418,13 @@ class CreativeRoomRunner:
                     llm_provider=response.provider,
                     llm_model=response.model,
                 )
+                if response.finish_reason == "length" or _looks_incomplete(response.content):
+                    state.add_comment(
+                        AgentRole.EDITOR,
+                        version.version_id,
+                        "这次模型输出可能仍未完全收束，可以继续输入“继续输出”来只补剩余部分。",
+                        severity="quality",
+                    )
                 return True
 
         fallback = (
@@ -1295,10 +1443,87 @@ class CreativeRoomRunner:
         state.add_message(AgentRole.EDITOR, "Created local feedback revision.")
         return True
 
+    def _continue_from_feedback(
+        self,
+        state: CreativeState,
+        *,
+        feedback: HumanFeedback,
+        base_text: str,
+        parent_version_id: str | None,
+    ) -> bool:
+        if self.llm:
+            try:
+                response = self.llm.chat(
+                    [
+                        ChatMessage(
+                            "system",
+                            "你在 EcRoom 里负责续写被截断或尚未完成的创作稿。只输出续写内容，不要重写上一版，不要解释过程。",
+                        ),
+                        ChatMessage(
+                            "user",
+                            "原始需求："
+                            + state.intent.raw_request
+                            + "\n用户要求："
+                            + (feedback.note or "继续输出")
+                            + "\n\n上一版全文：\n"
+                            + base_text
+                            + "\n\n请从上一版最后一个未完成的位置自然续写。"
+                            "不要重复已经写过的段落；如果上一版末尾有未闭合标题、列表或 Markdown 标记，先补完该小节。"
+                            "只输出续写部分。",
+                        ),
+                    ],
+                    max_tokens=CONTINUATION_MAX_TOKENS,
+                    temperature=0.68,
+                )
+            except LLMError as exc:
+                state.add_message(AgentRole.ORCHESTRATOR, f"LLM continuation failed: {exc}")
+            else:
+                continuation = _clean_continuation(response.content, base_text)
+                combined = _join_continuation(base_text, continuation)
+                version = state.add_draft(
+                    combined,
+                    AgentRole.EDITOR,
+                    rationale=f"根据用户要求由 {response.provider}/{response.model} 续写上一版。",
+                    parent_version_id=parent_version_id,
+                )
+                state.add_message(
+                    AgentRole.EDITOR,
+                    f"Continued {parent_version_id or state.session_id} into {version.version_id}.",
+                    llm_provider=response.provider,
+                    llm_model=response.model,
+                    finish_reason=response.finish_reason,
+                )
+                if response.finish_reason == "length" or _looks_incomplete(combined):
+                    state.add_comment(
+                        AgentRole.EDITOR,
+                        version.version_id,
+                        "续写内容可能仍未完整结束，可以再次输入“继续输出”继续补后续部分。",
+                        severity="quality",
+                    )
+                return True
+
+        fallback = _join_continuation(base_text, "（本地模式无法调用模型续写，请补充下一段方向后继续。）")
+        state.add_draft(
+            fallback,
+            AgentRole.EDITOR,
+            rationale="本地模式下保留上一版并追加续写占位。",
+            parent_version_id=parent_version_id,
+        )
+        state.add_message(AgentRole.EDITOR, "Created local continuation placeholder.")
+        return True
+
     def _build_context(self, state: CreativeState) -> None:
         query = " ".join([state.intent.raw_request, *state.intent.user_preferences])
-        memory_hits = self.memory.search_records(query, limit=6, project_id=state.project_id)
-        knowledge_hits = self.knowledge.search(query, limit=8, project_id=state.project_id)
+        memory_hits = filter_memory_for_session(
+            self.memory.search_records(query, limit=18, project_id=state.project_id),
+            state,
+            limit=6,
+        )
+        knowledge_hits = filter_knowledge_for_session(
+            self.knowledge.search(query, limit=24, project_id=state.project_id),
+            state,
+            limit=8,
+        )
 
         for item in memory_hits:
             content = str(item.get("content", ""))
@@ -1460,6 +1685,8 @@ class CreativeRoomRunner:
 
     def _infer_feedback_signal(self, note: str, edited_text: str | None = None) -> FeedbackSignal:
         text = f"{note} {edited_text or ''}"
+        if _is_continue_feedback(text):
+            return FeedbackSignal.CONTINUE
         if any(term in text for term in ["可以了", "就这样", "采纳", "确认", "发布", "定稿"]):
             return FeedbackSignal.ACCEPT
         if any(term in text for term in ["方向不对", "重来", "完全不对", "不要这个方向"]):
@@ -1556,7 +1783,12 @@ class CreativeRoomRunner:
             return
         for url in _detect_urls(text):
             try:
-                record = self.import_knowledge_url(url=url, kind="project", project_id=state.project_id, tags=["url", "user_source"])
+                record = self.import_knowledge_url(
+                    url=url,
+                    kind="project",
+                    project_id=state.project_id,
+                    tags=["url", "user_source", f"session:{state.session_id}"],
+                )
             except Exception as exc:
                 fact = f"用户提供链接：{url}。自动导入失败：{exc}"
             else:
@@ -1844,7 +2076,7 @@ def _agent_display_name(role: AgentRole) -> str:
         AgentRole.EDITOR: "改稿整理",
         AgentRole.CRITIC: "质量评审",
         AgentRole.NORM_STEWARD: "规范检查",
-        AgentRole.MEMORY_CURATOR: "记忆沉淀",
+        AgentRole.MEMORY_CURATOR: "上下文整理",
         AgentRole.CONTEXT_BUILDER: "上下文召回",
         AgentRole.ORCHESTRATOR: "任务编排",
     }
@@ -1853,9 +2085,9 @@ def _agent_display_name(role: AgentRole) -> str:
 
 def _agent_stage_detail(role: AgentRole, *, platforms: list[str], urls: list[str]) -> str:
     if role == AgentRole.INTENT_INTERPRETER:
-        return "提取目标、载体、约束、平台和用户偏好。"
+        return "提取目标、载体、约束、平台和本次要求。"
     if role == AgentRole.RESEARCHER:
-        details = ["召回记忆和资料库。"]
+        details = ["召回当前会话上下文和资料库。"]
         if platforms:
             details.append("识别到平台：" + "、".join(platforms) + "，准备召回对应规范。")
         if urls:
@@ -1872,7 +2104,7 @@ def _agent_stage_detail(role: AgentRole, *, platforms: list[str], urls: list[str
     if role == AgentRole.NORM_STEWARD:
         return "检查平台规则、项目设定、版权和发布边界。"
     if role == AgentRole.MEMORY_CURATOR:
-        return "判断哪些反馈适合沉淀为偏好、规则或项目记忆。"
+        return "整理当前会话边界，避免跨对话混用无关资料。"
     return "处理当前阶段。"
 
 
@@ -2039,9 +2271,11 @@ def default_publish_tags() -> list[str]:
 
 def normalize_publish_tags(value: object) -> list[str]:
     if isinstance(value, str):
-        raw_values = re.split(r"[\s,，、#]+", value)
+        raw_values = re.split(r"[\s,，、#＃/／|｜;；]+", value)
     elif isinstance(value, list):
-        raw_values = [str(item) for item in value]
+        raw_values = []
+        for item in value:
+            raw_values.extend(re.split(r"[\s,，、#＃/／|｜;；]+", str(item)))
     else:
         raw_values = []
     tags: list[str] = []
@@ -2097,6 +2331,60 @@ def _feedback_keyword(text: str) -> str:
         if term in text:
             return term
     return ""
+
+
+def _is_continue_feedback(text: str) -> bool:
+    normalized = re.sub(r"[\s。！!，,.、]+", "", text or "").lower()
+    if normalized in {"继续", "请继续", "继续输出", "请继续输出", "接着写", "继续写", "往下写", "续写", "补完", "补全", "接着输出"}:
+        return True
+    if normalized in {"continue", "goon", "keepgoing", "finishit"}:
+        return True
+    return bool(re.search(r"(继续|接着|往下|续写|补完|补全).{0,6}(输出|写|生成|后面|剩下|未完成)", text or "", re.I))
+
+
+def _clean_continuation(content: str, base_text: str) -> str:
+    text = (content or "").strip()
+    if not text:
+        return ""
+    normalized_base_tail = _normalize_for_overlap(base_text)[-1200:]
+    paragraphs = [part.strip() for part in re.split(r"\n{2,}", text) if part.strip()]
+    while paragraphs:
+        normalized_paragraph = _normalize_for_overlap(paragraphs[0])
+        if normalized_paragraph and normalized_paragraph in normalized_base_tail:
+            paragraphs.pop(0)
+            continue
+        break
+    return "\n\n".join(paragraphs).strip() or text
+
+
+def _join_continuation(base_text: str, continuation: str) -> str:
+    base = (base_text or "").rstrip()
+    extra = (continuation or "").strip()
+    if not extra:
+        return base
+    if base.endswith("**") and not extra.startswith("**"):
+        base = base[:-2].rstrip()
+    if base.count("**") % 2 == 1:
+        marker = base.rfind("**")
+        dangling = base[marker + 2 :].strip()
+        if 0 <= marker and "\n" not in dangling and len(dangling) <= 12:
+            base = base[:marker].rstrip()
+    return base + "\n\n" + extra
+
+
+def _looks_incomplete(text: str) -> bool:
+    stripped = (text or "").strip()
+    if not stripped:
+        return True
+    if stripped.endswith(("**", "*", "#", "：", ":", "、", "，", ",", "（", "(", "[", "【")):
+        return True
+    if stripped.count("**") % 2 == 1:
+        return True
+    return not stripped.endswith(("。", "！", "？", ".", "!", "?", "”", "」", "』", "）", ")"))
+
+
+def _normalize_for_overlap(text: str) -> str:
+    return re.sub(r"\s+", "", text or "")
 
 
 def _as_string_list(value: object) -> list[str]:

@@ -442,7 +442,7 @@ class MemoryStore:
         self._write_session_meta(meta)
         return {"deleted": True, "asset_id": session_id, "source": "session"}
 
-    def delete_session(self, session_id: str, *, mode: str = "revoke_memory") -> dict[str, object]:
+    def delete_session(self, session_id: str, *, mode: str = "history") -> dict[str, object]:
         self.load_state(session_id)
         if mode not in {"history", "revoke_memory", "full"}:
             raise ValueError(f"Unknown delete mode: {mode}")

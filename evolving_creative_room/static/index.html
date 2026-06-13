@@ -36,21 +36,28 @@
     </button>
 
     <section class="boot-screen" id="bootScreen" aria-label="EcRoom 正在进入">
-      <div class="boot-card">
-        <div class="cake-loader cake-loader-large" id="bootCake" style="--cake-progress: 0%">
-          <span class="cake-fill" aria-hidden="true"></span>
-          <svg viewBox="0 0 96 96" aria-hidden="true">
-            <path class="cake-candle" d="M32 17v15M48 12v20M64 17v15" />
-            <path class="cake-flame" d="M31 12c4 4 4 8 0 11-4-3-4-7 0-11ZM47 7c5 5 5 10 0 14-5-4-5-9 0-14ZM63 12c4 4 4 8 0 11-4-3-4-7 0-11Z" />
-            <path class="cake-icing" d="M21 40c8-10 14 5 22-3 7-7 12 5 20-1 6-4 10-3 12 4" />
-            <path class="cake-body" d="M17 39h62v36a9 9 0 0 1-9 9H26a9 9 0 0 1-9-9V39Z" />
-            <path class="cake-drip" d="M29 40v12M48 40v18M67 40v10" />
-            <path class="cake-plate" d="M13 84h70" />
-          </svg>
+      <div class="boot-stage">
+        <div class="boot-orbit" id="bootMark" style="--boot-progress: 0%">
+          <div class="porcelain-cake" aria-hidden="true">
+            <span class="cake-fill"></span>
+            <svg viewBox="0 0 96 96" aria-hidden="true">
+              <path class="cake-candle" d="M32 17v15M48 12v20M64 17v15" />
+              <path class="cake-flame" d="M31 12c4 4 4 8 0 11-4-3-4-7 0-11ZM47 7c5 5 5 10 0 14-5-4-5-9 0-14ZM63 12c4 4 4 8 0 11-4-3-4-7 0-11Z" />
+              <path class="cake-icing" d="M21 40c8-10 14 5 22-3 7-7 12 5 20-1 6-4 10-3 12 4" />
+              <path class="cake-body" d="M17 39h62v36a9 9 0 0 1-9 9H26a9 9 0 0 1-9-9V39Z" />
+              <path class="cake-drip" d="M29 40v12M48 40v18M67 40v10" />
+              <path class="cake-plate" d="M13 84h70" />
+            </svg>
+          </div>
         </div>
-        <div>
+        <div class="boot-wordmark">
           <strong>EcRoom</strong>
+          <span>Creative Room is opening</span>
         </div>
+        <svg class="boot-heartline" viewBox="0 0 560 88" aria-hidden="true">
+          <path class="heartline-track" d="M10 46H128l18-18 20 42 24-58 28 34h18M324 46h18l16-16 18 34 26-28 22 10h126" />
+          <path class="heartline-pulse" d="M10 46H128l18-18 20 42 24-58 28 34h18M324 46h18l16-16 18 34 26-28 22 10h126" />
+        </svg>
       </div>
     </section>
 
@@ -74,7 +81,7 @@
           <button id="collapseSidebarBtn" class="icon-button" type="button" aria-label="折叠历史栏"><svg aria-hidden="true"><use href="#i-close"></use></svg></button>
         </div>
         <button id="newChatBtn" class="new-chat" type="button"><svg aria-hidden="true"><use href="#i-pen"></use></svg>新对话</button>
-        <div class="history-label">最近</div>
+        <div class="history-label">时间线</div>
         <div id="sessionList" class="session-list"></div>
       </aside>
 
@@ -96,13 +103,18 @@
 
           <section class="inspiration-feed">
             <div class="feed-tabs">
-              <button class="feed-tab active" type="button" data-category="discover">发现</button>
-              <button class="feed-tab" type="button" data-category="short">短文</button>
-              <button class="feed-tab" type="button" data-category="campaign">活动</button>
-              <button class="feed-tab" type="button" data-category="role">角色</button>
-              <button class="feed-tab" type="button" data-category="world">世界观</button>
-              <label class="feed-search"><svg aria-hidden="true"><use href="#i-search"></use></svg><input id="feedSearch" placeholder="" /></label>
-              <button class="feed-refresh-button" id="refreshFeedBtn" type="button">换一批</button>
+              <button class="feed-tab active" type="button" data-category="discover">推荐</button>
+              <button class="feed-tab" type="button" data-category="post">帖子</button>
+              <button class="feed-tab" type="button" data-category="video">视频</button>
+              <button class="feed-tab" type="button" data-category="longform">长文</button>
+              <button class="feed-tab" type="button" data-category="story">故事</button>
+              <button class="feed-tab" type="button" data-category="knowledge">知识</button>
+              <button class="feed-tab" type="button" data-category="professional">职场</button>
+              <label class="feed-search"><svg aria-hidden="true"><use href="#i-search"></use></svg><input id="feedSearch" placeholder="搜索站内作品" /></label>
+              <button class="feed-refresh-button pull-refresh-button" id="refreshFeedBtn" type="button" aria-label="按住下拉换一批灵感" title="按住下拉换一批">
+                <span class="pull-cord" aria-hidden="true"><span class="pull-knot"></span></span>
+                <span class="pull-label">换一批</span>
+              </button>
             </div>
             <div id="inspirationGrid" class="inspiration-grid"></div>
           </section>
@@ -130,7 +142,7 @@
                 <button class="icon-button title-edit-button" id="chatTitleEditBtn" type="button" aria-label="修改标题"><svg aria-hidden="true"><use href="#i-pen"></use></svg></button>
               </div>
             </div>
-            <button class="icon-button evolution-review-button" id="evolutionReviewBtn" type="button" aria-label="本次学习沉淀" hidden>
+            <button class="icon-button evolution-review-button" id="evolutionReviewBtn" type="button" aria-label="本次工作方式建议" hidden>
               <svg aria-hidden="true"><use href="#i-tool"></use></svg>
               <span id="evolutionReviewCount">0</span>
             </button>
@@ -139,7 +151,6 @@
           <form id="feedbackForm" class="composer chat-composer">
             <textarea id="feedbackNote" rows="4" placeholder="继续告诉我怎么改。也可以直接贴改稿、补充平台要求、禁用词、角色设定或个人偏好。"></textarea>
             <div class="composer-actions">
-              <button class="tool-button small-tool" id="chatSkillButton" type="button" hidden><svg aria-hidden="true"><use href="#i-tool"></use></svg><span id="chatSkillLabel">开始方式</span></button>
               <button class="send-button" type="submit" aria-label="提交反馈"><svg aria-hidden="true"><use href="#i-send"></use></svg></button>
             </div>
           </form>
@@ -174,7 +185,7 @@
               <div id="assetFinalContent" class="asset-final-content"></div>
             </article>
             <aside class="asset-info">
-              <div class="asset-author"><span class="asset-avatar"><img src="/assets/ecroom-icon-64.png" alt="" /></span><strong>EcRoom</strong></div>
+              <div class="asset-author"><span class="asset-avatar"><img id="assetAuthorAvatar" src="/assets/ecroom-icon-64.png" alt="" /></span><strong id="assetAuthorName">创作者</strong></div>
               <div class="asset-meta" id="assetMeta"></div>
               <div class="asset-section"><h2>关键需求</h2><p id="assetPrompt"></p></div>
               <div class="asset-actions">
@@ -220,6 +231,10 @@
             </section>
             <aside class="publish-preview">
               <div class="publish-preview-card">
+                <div class="publish-preview-author">
+                  <span class="publish-preview-avatar"><img id="publishPreviewAuthorAvatar" src="/assets/ecroom-icon-64.png" alt="" /></span>
+                  <div><strong id="publishPreviewAuthorName">创作者</strong><span>作品预览</span></div>
+                </div>
                 <div class="publish-preview-cover"><img id="publishPreviewCover" alt="发布预览封面" /></div>
                 <div class="publish-preview-copy">
                   <h2 id="publishPreviewTitle">未命名作品</h2>
@@ -274,13 +289,25 @@
     <section class="modal" id="deleteModal" aria-hidden="true">
       <div class="modal-card">
         <h2>删除这条对话？</h2>
-        <p>这里只处理当前这条对话。已保存作品和你确认过的偏好不会被默认删除。</p>
+        <p>这里只处理当前这条对话。已保存作品不会被默认删除。</p>
         <div class="delete-options" role="radiogroup" aria-label="删除方式">
-          <label><input type="radio" name="deleteMode" value="history" checked /><span><strong>从历史中移除</strong><small>不再显示在左侧历史。已确认偏好、作品和项目资料继续保留。</small></span></label>
-          <label><input type="radio" name="deleteMode" value="revoke_memory" /><span><strong>同时撤销本次未确认学习</strong><small>隐藏这次尚未确认的偏好候选和工作规则建议，不影响你手动保存过的内容。</small></span></label>
-          <label><input type="radio" name="deleteMode" value="full" /><span><strong>删除本次原始文件</strong><small>移除这条会话的本地草稿、证据和关联进化记录。通常只在清理误建会话时使用。</small></span></label>
+          <label><input type="radio" name="deleteMode" value="history" checked /><span><strong>从历史中移除</strong><small>不再显示在左侧历史，已保存作品继续保留。</small></span></label>
+          <label><input type="radio" name="deleteMode" value="full" /><span><strong>彻底删除这次创作</strong><small>删除这条对话、关联资料、系统自检建议和本地草稿。适合清理误建或不想保留的创作。</small></span></label>
         </div>
         <div class="modal-actions"><button class="ghost-button" id="cancelDeleteBtn" type="button">取消</button><button class="danger-button" id="confirmDeleteBtn" type="button">删除</button></div>
+      </div>
+    </section>
+    <section class="modal" id="historyManageModal" aria-hidden="true">
+      <div class="modal-card history-manage-card">
+        <div class="modal-head">
+          <div>
+            <p>History</p>
+            <h2>历史管理</h2>
+          </div>
+          <button class="icon-button" id="closeHistoryManageBtn" type="button" aria-label="关闭"><svg aria-hidden="true"><use href="#i-close"></use></svg></button>
+        </div>
+        <p class="history-manage-note">这里管理对话记录本身。发布作品和收藏内容会按删除方式分别处理。</p>
+        <div class="history-manage-list" id="historyManageList"></div>
       </div>
     </section>
     <section class="modal settings-modal" id="settingsModal" aria-hidden="true">
@@ -288,23 +315,12 @@
         <aside class="settings-sidebar" aria-label="设置分区">
           <button class="icon-button settings-close" id="closeSettingsBtn" type="button" aria-label="关闭"><svg aria-hidden="true"><use href="#i-close"></use></svg></button>
           <nav class="settings-nav" aria-label="设置分区">
-            <button class="settings-nav-item active" type="button" data-settings-section="general"><strong>常规</strong><span>个人资料和显示</span></button>
-            <button class="settings-nav-item" type="button" data-settings-section="model"><strong>模型</strong><span>连接和能力</span></button>
-            <button class="settings-nav-item" type="button" data-settings-section="memory"><strong>个性化</strong><span>偏好和学习</span></button>
-            <button class="settings-nav-item" type="button" data-settings-section="data"><strong>数据管理</strong><span>对话、作品、资料</span></button>
-            <button class="settings-nav-item" type="button" data-settings-section="rules"><strong>工作规则</strong><span>复审和评测</span></button>
+            <button class="settings-nav-item active" type="button" data-settings-section="model"><strong>模型</strong><span>连接和能力</span></button>
+            <button class="settings-nav-item" type="button" data-settings-section="data"><strong>数据管理</strong><span>历史、作品和资料</span></button>
           </nav>
         </aside>
         <section class="settings-content">
-          <section class="settings-panel active" data-settings-panel="general">
-            <div class="settings-panel-head"><p>General</p><h2>常规</h2><span>这些内容只影响 EcRoom 里的本地显示和创作者主页。</span></div>
-            <div class="settings-list">
-              <article class="settings-row"><div><strong>个人资料</strong><span>昵称、简介和头像在个人主页中编辑。</span></div><button class="ghost-button" type="button" data-settings-open-profile>打开个人主页</button></article>
-              <article class="settings-row"><div><strong>主题</strong><span>跟随右下角的明暗主题按钮，当前设置保存在本机浏览器。</span></div></article>
-            </div>
-          </section>
-
-          <section class="settings-panel" data-settings-panel="model">
+          <section class="settings-panel active" data-settings-panel="model">
             <div class="settings-panel-head"><p>Model</p><h2>创作模型</h2><span>API Key 只保存在本地工作区，不会回显到页面。</span></div>
             <div class="settings-status-row"><strong>当前连接</strong><span id="modelRuntimeStatus">读取中</span></div>
             <form id="settingsForm" class="settings-form">
@@ -317,17 +333,11 @@
             </form>
           </section>
 
-          <section class="settings-panel" data-settings-panel="memory">
-            <div class="settings-panel-head"><p>Preference</p><h2>个性化</h2><span>这里只管理你确认保存的偏好。临时要求只影响当前创作，不会自动变成长期记忆。</span></div>
-            <form id="memoryPolicyForm" class="settings-form compact-settings-form">
-              <label>每次最多建议保存<input id="memoryCandidateLimit" type="number" min="1" max="8" /></label>
-              <label>建议严格度<input id="memoryMinConfidence" type="range" min="0" max="1" step="0.05" /></label>
-              <label class="toggle-row"><input id="memoryCompleteOnly" type="checkbox" /><span>仅在作品完成后展示可保存偏好</span></label>
-              <div class="drawer-actions"><button class="primary-button" type="submit">保存个性化设置</button></div>
-            </form>
+          <section class="settings-panel legacy-settings-panel" data-settings-panel="memory" hidden>
+            <div class="settings-panel-head"><p>Memory</p><h2>旧版偏好记录</h2><span>旧版偏好自动记录入口已停用；创作要求请直接在对话中反馈。</span></div>
             <section class="preference-settings settings-subsection">
               <div class="preference-settings-head">
-                <div><h3>已保存偏好</h3><p>删除后不会再参与后续创作召回。</p></div>
+                <div><h3>旧版记录</h3><p>这些记录不会作为新的自动记录入口展示。</p></div>
                 <button class="ghost-button" id="refreshPreferencesBtn" type="button">刷新</button>
               </div>
               <div id="preferenceList" class="preference-list"></div>
@@ -335,26 +345,13 @@
           </section>
 
           <section class="settings-panel" data-settings-panel="data">
-            <div class="settings-panel-head"><p>Data</p><h2>数据管理</h2><span>EcRoom 的数据按创作对象分开管理，避免误删长期记忆或作品。</span></div>
+            <div class="settings-panel-head"><p>Data</p><h2>数据管理</h2><span>管理你能直接看见和操作的内容：创作历史、作品、本地资料和已确认的系统学习条目。</span></div>
             <div class="settings-list">
-              <article class="settings-row"><div><strong>对话记录</strong><span>左侧历史保存创作过程。删除单条对话时，可以选择是否撤销本次未确认学习。</span></div><button class="ghost-button" type="button" data-settings-close-only>在历史中管理</button></article>
-              <article class="settings-row"><div><strong>已完成作品</strong><span>作品库保存可复用成果、发布草稿和封面引用。</span></div><button class="ghost-button" type="button" data-settings-open-assets>打开作品库</button></article>
-              <article class="settings-row"><div><strong>偏好记忆</strong><span>你确认过的长期偏好和项目规则，可在个性化中逐条删除。</span></div><button class="ghost-button" type="button" data-settings-go="memory">管理偏好</button></article>
-              <article class="settings-row"><div><strong>项目资料</strong><span>导入的链接、规范和设定保存在本地工作区，用于资料写作和设定一致性检查。</span></div></article>
-              <article class="settings-row"><div><strong>创作助理改进建议</strong><span>工作规则建议只在相关对话角落复审，默认不会影响所有项目。</span></div></article>
-              <article class="settings-row"><div><strong>工作区检查</strong><span id="dataDoctorStatus">检查会话、作品、资料、记忆和媒体引用是否完整。</span></div><button class="ghost-button" id="runDataDoctorBtn" type="button">检查</button></article>
-              <article class="settings-row"><div><strong>修复搜索索引</strong><span>从本地记忆和资料重新写入检索索引，不修改正文和偏好。</span></div><button class="ghost-button" id="rebuildIndexBtn" type="button">修复索引</button></article>
+              <article class="settings-row"><div><strong>创作历史</strong><span>历史栏保存每一次创作过程；单条历史可选择仅移除记录，或彻底删除相关创作数据。</span></div><button class="ghost-button" type="button" data-settings-open-history>在历史中管理</button></article>
+              <article class="settings-row"><div><strong>作品与草稿</strong><span>作品库保存私有作品、发布草稿、已发布作品和收藏内容。</span></div><button class="ghost-button" type="button" data-settings-open-assets>打开作品库</button></article>
+              <article class="settings-row"><div><strong>已学习条目</strong><span>这里只管理经你确认、会影响后续协作方式的系统自进化条目；普通反馈不会列入这里。</span></div><button class="ghost-button" id="refreshLearnedBtn" type="button">刷新</button></article>
             </div>
-          </section>
-
-          <section class="settings-panel" data-settings-panel="rules">
-            <div class="settings-panel-head"><p>Review</p><h2>工作规则</h2><span>这些开关只影响创作助理如何复盘本次创作，不会直接改写你的作品。</span></div>
-            <form id="harnessSettingsForm" class="settings-form compact-settings-form">
-              <label class="toggle-row"><input id="harnessAutoPropose" type="checkbox" /><span>允许提出创作助理改进建议</span></label>
-              <label class="toggle-row"><input id="harnessRecordSkillRuns" type="checkbox" /><span>记录能力流程结果，用于评测和复盘</span></label>
-              <label>改进前至少验证<input id="harnessMinEvalCases" type="number" min="1" max="20" /></label>
-              <div class="drawer-actions"><button class="primary-button" type="submit">保存工作规则设置</button></div>
-            </form>
+            <div id="learnedList" class="learned-list" aria-live="polite"></div>
           </section>
         </section>
       </div>
@@ -364,32 +361,32 @@
         <div class="modal-head">
           <div>
             <p id="evolutionReviewCounter">1 / 1</p>
-            <h2>这次要沉淀什么？</h2>
+            <h2>这次要改进什么？</h2>
           </div>
           <button class="icon-button" id="cancelApplyEvolutionBtn" type="button" aria-label="关闭"><svg aria-hidden="true"><use href="#i-close"></use></svg></button>
         </div>
         <div class="evolution-review-copy">
-          <strong id="evolutionReviewTitle">学习沉淀</strong>
-          <p id="evolutionReviewBody">这次创作里有一条值得确认的信号。</p>
+          <strong id="evolutionReviewTitle">工作方式建议</strong>
+          <p id="evolutionReviewBody">这次创作里有一条值得复盘的协作方式问题。</p>
           <div class="evolution-review-meta">
             <span id="evolutionReviewScope">适用范围：当前项目</span>
             <span id="evolutionReviewImpact">可能影响：需要人工复核</span>
           </div>
         </div>
         <details class="evolution-tech-details">
-          <summary>学习依据</summary>
+          <summary>判断依据</summary>
           <pre id="evolutionReviewTech"></pre>
         </details>
         <div class="modal-actions">
           <button class="ghost-button" id="ignoreEvolutionBtn" type="button">跳过</button>
-          <button class="primary-button" id="confirmApplyEvolutionBtn" type="button">保存这条</button>
+          <button class="primary-button" id="confirmApplyEvolutionBtn" type="button">允许这样调整</button>
         </div>
       </div>
     </section>
     <section class="modal" id="publishPromptModal" aria-hidden="true">
       <div class="modal-card publish-prompt-card">
         <h2>这版作品已经保存</h2>
-        <p>可以发布到个人主页，也可以先留在作品库里。完成后，本次可学习的偏好和项目规则会单独交给你确认。</p>
+        <p>可以发布到个人主页，也可以先留在作品库里。完成后，如系统发现协作方式需要改进，会单独交给你确认。</p>
         <div class="modal-actions stacked-actions">
           <button class="primary-button" id="goPublishBtn" type="button">发布作品</button>
           <button class="ghost-button" id="saveWorkOnlyBtn" type="button">只保存作品</button>
@@ -400,10 +397,10 @@
     <section class="modal" id="reopenWorkModal" aria-hidden="true">
       <div class="modal-card publish-prompt-card">
         <h2>继续修改这版作品？</h2>
-        <p>如果继续创作，刚才根据这版作品整理出的学习条目可能不再准确。你可以删除本次学习条目，之后完成时再重新沉淀。</p>
+        <p>如果继续创作，当前完成状态会撤销。本次系统自检建议不会自动应用，你也可以在下次完成后再确认。</p>
         <div class="modal-actions stacked-actions">
-          <button class="primary-button" id="reopenAndClearLearningBtn" type="button">继续修改并删除本次学习</button>
-          <button class="ghost-button" id="reopenKeepLearningBtn" type="button">继续修改但暂时保留</button>
+          <button class="primary-button" id="reopenAndClearLearningBtn" type="button">继续修改</button>
+          <button class="ghost-button" id="reopenKeepLearningBtn" type="button">继续修改并保留自检建议</button>
           <button class="ghost-button" id="cancelReopenWorkBtn" type="button">取消</button>
         </div>
       </div>
@@ -443,7 +440,7 @@
           <div class="preview-section"><h3 id="previewOutputLabel">最后版本</h3><p id="previewOutput"></p></div>
         </article>
         <aside class="preview-side">
-          <div class="asset-author"><span class="asset-avatar"><img src="/assets/ecroom-icon-64.png" alt="" /></span><strong>EcRoom</strong></div>
+          <div class="asset-author"><span class="asset-avatar"><img id="previewAuthorAvatar" src="/assets/ecroom-icon-64.png" alt="" /></span><strong id="previewAuthorName">创作者</strong></div>
           <div class="asset-meta" id="previewMeta"></div>
           <div class="preview-actions">
             <button class="ghost-button" id="likePreviewBtn" type="button">喜欢</button>

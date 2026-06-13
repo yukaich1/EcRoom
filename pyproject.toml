@@ -27,5 +27,6 @@ evolving_creative_room = [
     "static/*.css",
     "static/*.js",
     "static/assets/*.png",
+    "static/assets/*.webp",
     "static/assets/inspiration/*.jpg",
 ]

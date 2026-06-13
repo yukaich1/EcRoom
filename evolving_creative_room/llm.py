@@ -20,6 +20,7 @@ class LLMResponse:
     content: str
     provider: str
     model: str
+    finish_reason: str = ""
     usage: dict[str, object] = field(default_factory=dict)
     raw: dict[str, object] = field(default_factory=dict)
 
@@ -67,7 +68,7 @@ class OpenAICompatibleClient:
         api_key: str,
         model: str,
         base_url: str,
-        timeout: int = 60,
+        timeout: int = 120,
     ) -> None:
         self.provider = provider
         self.api_key = api_key
@@ -86,11 +87,12 @@ class OpenAICompatibleClient:
         temperature: float = 0.7,
         max_tokens: int = 900,
     ) -> LLMResponse:
+        resolved_max_tokens = _resolve_max_tokens(max_tokens)
         payload = {
             "model": self.model,
             "messages": [{"role": item.role, "content": item.content} for item in messages],
             "temperature": temperature,
-            "max_tokens": max_tokens,
+            "max_tokens": resolved_max_tokens,
         }
         request = urllib.request.Request(
             self.endpoint,
@@ -115,6 +117,7 @@ class OpenAICompatibleClient:
             content=content,
             provider=self.provider,
             model=str(raw.get("model", self.model)),
+            finish_reason=_extract_finish_reason(raw),
             usage=dict(raw.get("usage") or {}),
             raw=raw,
         )
@@ -162,6 +165,17 @@ def client_from_env() -> LLMClient | None:
     raise LLMError(f"未知 LLM provider: {provider}")
 
 
+def _resolve_max_tokens(requested: int) -> int:
+    value = max(int(requested or 900), 1)
+    override = os.getenv("ECR_LLM_MAX_OUTPUT_TOKENS", "").strip()
+    if override:
+        try:
+            value = int(override)
+        except ValueError:
+            pass
+    return max(1, min(value, 12000))
+
+
 def _extract_chat_content(raw: dict[str, object]) -> str:
     choices = raw.get("choices")
     if not isinstance(choices, list) or not choices:
@@ -183,3 +197,14 @@ def _extract_chat_content(raw: dict[str, object]) -> str:
         if parts:
             return "\n".join(parts).strip()
     raise LLMError("模型响应缺少文本内容。")
+
+
+def _extract_finish_reason(raw: dict[str, object]) -> str:
+    choices = raw.get("choices")
+    if not isinstance(choices, list) or not choices:
+        return ""
+    first = choices[0]
+    if not isinstance(first, dict):
+        return ""
+    reason = first.get("finish_reason")
+    return reason if isinstance(reason, str) else ""

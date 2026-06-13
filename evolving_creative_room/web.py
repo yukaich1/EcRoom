@@ -75,6 +75,9 @@ class CreativeRoomWebHandler(BaseHTTPRequestHandler):
         if path == "/api/preferences":
             self._json(self.runner.preferences_view())
             return
+        if path == "/api/learned":
+            self._json(self.runner.learned_items_view())
+            return
         if path == "/api/knowledge":
             self._json(
                 self.runner.knowledge_view(
@@ -315,8 +318,12 @@ class CreativeRoomWebHandler(BaseHTTPRequestHandler):
             if path.startswith("/api/session/"):
                 session_id = path.split("/")[-1]
                 payload = self._read_json()
-                mode = str(payload.get("mode", "revoke_memory")).strip() or "revoke_memory"
+                mode = str(payload.get("mode", "history")).strip() or "history"
                 self._json(self.runner.delete_session(session_id, mode=mode))
+                return
+            if path.startswith("/api/learned/"):
+                item_id = unquote(path.removeprefix("/api/learned/"))
+                self._json(self.runner.delete_learned_item(item_id))
                 return
             self._json({"error": "not_found"}, HTTPStatus.NOT_FOUND)
         except (FileNotFoundError, ValueError) as exc:

@@ -85,6 +85,20 @@ class FakeTemplateLLM(FakeLLM):
         return LLMResponse("ok", self.provider, self.model)
 
 
+class FakeContinuationLLM(FakeLLM):
+    def chat(
+        self,
+        messages: list[ChatMessage],
+        *,
+        temperature: float = 0.7,
+        max_tokens: int = 900,
+    ) -> LLMResponse:
+        prompt = messages[-1].content
+        if "只输出续写部分" in prompt:
+            return LLMResponse("技术提示：镜头继续向上，补完天空粒子和收束字幕。", self.provider, self.model)
+        return super().chat(messages, temperature=temperature, max_tokens=max_tokens)
+
+
 class SeedSessionTests(unittest.TestCase):
     def test_seed_session_writes_memory_and_manifest(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -125,6 +139,27 @@ class SeedSessionTests(unittest.TestCase):
             self.assertEqual(updated.drafts[-1].author.value, "editor")
             loaded = runner.memory.load_state(state.session_id)
             self.assertEqual(loaded.drafts[-1].content, updated.drafts[-1].content)
+
+    def test_continue_feedback_appends_instead_of_rewriting(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            runner = CreativeRoomRunner(Path(tmp), llm=FakeContinuationLLM())
+            state = runner.run_seed_session(
+                request="写一个视频脚本。",
+                user_preferences=[],
+            )
+            state.drafts[-1].content = "动作：\n扫帚低空平稳滑行。\n**技"
+            runner.memory.save_state(state)
+
+            updated = runner.record_feedback(
+                state.session_id,
+                signal=FeedbackSignal.EDIT,
+                note="请继续输出",
+            )
+
+            self.assertEqual(updated.human_feedback[-1].signal, FeedbackSignal.CONTINUE)
+            self.assertIn("扫帚低空平稳滑行", updated.drafts[-1].content)
+            self.assertIn("技术提示：镜头继续向上", updated.drafts[-1].content)
+            self.assertNotIn("**技\n\n技术提示", updated.drafts[-1].content)
 
     def test_feedback_does_not_sediment_skill_instruction(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -589,7 +624,7 @@ class SeedSessionTests(unittest.TestCase):
             self.assertTrue(runner.memory_view(query="角色", project_id=project_id)["records"])
             self.assertGreater(runner.observability_view()["summary"]["total_calls"], 0)
 
-    def test_persona_memory_requires_user_confirmation(self) -> None:
+    def test_persona_memory_is_not_auto_confirmed_from_completion(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             runner = CreativeRoomRunner(Path(tmp), llm=FakeLLM())
             first = runner.run_seed_session(
@@ -608,10 +643,9 @@ class SeedSessionTests(unittest.TestCase):
 
             self.assertFalse(runner.session_view(second.session_id)["learning"]["candidates"])
             runner.complete_session(second.session_id, True)
-            candidate = next(item for item in runner.session_view(second.session_id)["learning"]["candidates"] if item["kind"] == "preference")
-            runner.apply_learning(str(candidate["candidate_id"]), "preference")
+            self.assertFalse(runner.session_view(second.session_id)["learning"]["candidates"])
             confirmed_l3 = runner.memory.list_records(layer="L3", project_id="global")
-            self.assertTrue(any("喜欢自然一点" in str(item.get("content", "")) for item in confirmed_l3))
+            self.assertFalse(any("喜欢自然一点" in str(item.get("content", "")) for item in confirmed_l3))
 
     def test_delete_session_can_revoke_memory_influence(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -645,7 +679,7 @@ class SeedSessionTests(unittest.TestCase):
             hits = runner.memory.search_records("档案 克制", project_id=state.project_id)
             self.assertTrue(any(state.session_id in (item.get("evidence_ids") or []) for item in hits))
 
-    def test_learning_candidates_are_scoped_before_becoming_memory(self) -> None:
+    def test_completion_does_not_auto_create_user_learning_candidates(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             runner = CreativeRoomRunner(Path(tmp), llm=FakeLLM())
             state = runner.run_seed_session(
@@ -656,35 +690,77 @@ class SeedSessionTests(unittest.TestCase):
             self.assertFalse(view["learning"]["candidates"])
             runner.complete_session(state.session_id, True)
             view = runner.session_view(state.session_id)
-            candidates = view["learning"]["candidates"]
-            self.assertTrue(candidates)
-            preference = next(item for item in candidates if item["kind"] == "preference")
-            self.assertEqual(preference["suggested_scope"], "global")
-
-            result = runner.apply_learning(str(preference["candidate_id"]), "global")
-
-            self.assertEqual(result["candidate"]["status"], "global_active")
+            self.assertFalse(view["learning"]["candidates"])
             global_hits = runner.memory.search_records("轻一点", project_id="default")
-            self.assertTrue(any("偏好：" in str(item.get("content", "")) for item in global_hits))
+            self.assertFalse(any("偏好：" in str(item.get("content", "")) for item in global_hits))
 
-    def test_project_learning_and_metrics_are_recorded(self) -> None:
+    def test_unconfirmed_session_memory_does_not_cross_conversation_context(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            runner = CreativeRoomRunner(Path(tmp), llm=FakeLLM())
+            first = runner.run_seed_session(request="帮我写一个角色设定。")
+            runner.memory.append(
+                MemoryRecord(
+                    layer="L2",
+                    content="本话题临时设定：银蓝钥匙只属于第一条对话。",
+                    project_id=first.project_id,
+                    evidence_ids=[first.session_id],
+                    tags=["context", "creative"],
+                )
+            )
+
+            second = runner.run_seed_session(request="请围绕银蓝钥匙写一个新角色设定。")
+
+            self.assertFalse(any("第一条对话" in str(fact) for fact in second.facts))
+
+            runner.memory.append(
+                MemoryRecord(
+                    layer="L2",
+                    content="项目规则：银蓝钥匙是可跨对话复用的项目设定。",
+                    project_id=first.project_id,
+                    evidence_ids=[first.session_id],
+                    tags=["project_rule", "confirmed", "scope:project"],
+                )
+            )
+
+            third = runner.run_seed_session(request="请围绕银蓝钥匙写一个新角色设定。")
+
+            self.assertTrue(any("可跨对话复用" in str(fact) for fact in third.facts))
+
+    def test_user_source_knowledge_is_scoped_to_importing_conversation(self) -> None:
+        original = runner_module.import_public_page
+        runner_module.import_public_page = lambda url: {
+            "title": "临时资料",
+            "content": "独有月纹设定只属于导入它的那一次对话。",
+            "source": url,
+        }
+        try:
+            with tempfile.TemporaryDirectory() as tmp:
+                runner = CreativeRoomRunner(Path(tmp), llm=FakeLLM())
+                first = runner.run_seed_session(request="参考 https://example.com/private-note 写一段角色文案。")
+                imported = runner.knowledge_view(query="独有月纹设定")["records"]
+                self.assertTrue(any(f"session:{first.session_id}" in (item.get("tags") or []) for item in imported))
+
+                second = runner.run_seed_session(request="独有月纹设定可以用于这个新话题吗？")
+
+                self.assertFalse(any("独有月纹设定" in str(fact) for fact in second.facts))
+        finally:
+            runner_module.import_public_page = original
+
+    def test_completion_records_session_metrics_without_project_learning(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             runner = CreativeRoomRunner(Path(tmp), llm=FakeLLM())
             state = runner.run_seed_session(
                 request="帮我写一段微博宣发，要求不要夸张承诺。",
             )
             runner.complete_session(state.session_id, True)
-            candidate = next(item for item in runner.session_view(state.session_id)["learning"]["candidates"] if item["kind"] in {"project_rule", "platform_rule"})
-
-            runner.apply_learning(str(candidate["candidate_id"]), "project")
 
             hits = runner.memory.search_records("夸张承诺 微博", project_id=state.project_id)
-            self.assertTrue(any("项目规则" in str(item.get("content", "")) for item in hits))
+            self.assertFalse(any("项目规则" in str(item.get("content", "")) for item in hits))
             summary = runner.observability_view()["product_metrics"]
             self.assertGreater(summary["counts"].get("session_finalized", 0), 0)
-            self.assertGreater(summary["counts"].get("learning_confirmed", 0), 0)
+            self.assertEqual(summary["counts"].get("learning_confirmed", 0), 0)
 
-    def test_project_rules_default_to_project_scope(self) -> None:
+    def test_project_rules_are_not_auto_suggested_on_completion(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             runner = CreativeRoomRunner(Path(tmp), llm=FakeLLM())
             state = runner.run_seed_session(
@@ -692,10 +768,7 @@ class SeedSessionTests(unittest.TestCase):
             )
             runner.complete_session(state.session_id, True)
             candidates = runner.session_view(state.session_id)["learning"]["candidates"]
-            project_rule = next(item for item in candidates if item["kind"] == "project_rule")
-
-            self.assertEqual(project_rule["suggested_scope"], "project")
-            self.assertLess(project_rule["interruption_risk"], 0.5)
+            self.assertFalse(candidates)
 
     def test_saved_preferences_can_be_listed_and_deleted(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -704,10 +777,15 @@ class SeedSessionTests(unittest.TestCase):
                 request="帮我写一段角色文案。",
                 user_preferences=["以后默认不要模板腔"],
             )
-            self.assertFalse(runner.session_view(state.session_id)["learning"]["candidates"])
-            runner.complete_session(state.session_id, True)
-            candidate = next(item for item in runner.session_view(state.session_id)["learning"]["candidates"] if item["kind"] == "preference")
-            runner.apply_learning(str(candidate["candidate_id"]), "preference")
+            runner.memory.append(
+                MemoryRecord(
+                    layer="L3",
+                    content="偏好：以后默认不要模板腔",
+                    project_id="global",
+                    evidence_ids=[state.session_id],
+                    tags=["preference", "confirmed", "scope:global"],
+                )
+            )
 
             preferences = runner.preferences_view()["preferences"]
             self.assertTrue(any("不要模板腔" in str(item.get("display_content", "")) for item in preferences))
@@ -729,11 +807,11 @@ class SeedSessionTests(unittest.TestCase):
 
             result = runner.delete_session(state.session_id, mode="revoke_memory")
 
-            self.assertGreater(result["revoked_learning_count"], 0)
+            self.assertEqual(result["revoked_learning_count"], 0)
             candidates = runner.learning.list(session_id=state.session_id)
             self.assertTrue(all(item["status"] == "revoked" for item in candidates))
 
-    def test_learning_candidates_preserve_negation_and_skip_ephemeral(self) -> None:
+    def test_completion_skips_negation_learning_candidates(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             runner = CreativeRoomRunner(Path(tmp), llm=FakeLLM())
             state = runner.run_seed_session(
@@ -743,13 +821,9 @@ class SeedSessionTests(unittest.TestCase):
             runner.complete_session(state.session_id, True)
 
             candidates = runner.session_view(state.session_id)["learning"]["candidates"]
-            contents = [str(item.get("content", "")) for item in candidates]
+            self.assertFalse(candidates)
 
-            self.assertTrue(any("不要夸张承诺" in content for content in contents))
-            self.assertFalse(any(content.strip() == "夸张承诺" for content in contents))
-            self.assertFalse(any("这次语气冷一点" in content or content.strip() == "冷一点" for content in contents))
-
-    def test_platform_candidates_are_readable_rules(self) -> None:
+    def test_completion_does_not_create_platform_candidates(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             runner = CreativeRoomRunner(Path(tmp), llm=FakeLLM())
             state = runner.run_seed_session(
@@ -759,9 +833,7 @@ class SeedSessionTests(unittest.TestCase):
 
             candidates = runner.session_view(state.session_id)["learning"]["candidates"]
             platform_candidates = [item for item in candidates if item["kind"] == "platform_rule"]
-            self.assertTrue(platform_candidates)
-            self.assertTrue(any("小红书" in str(item.get("content", "")) for item in platform_candidates))
-            self.assertFalse(any(str(item.get("content", "")).startswith("平台规范线索：") for item in platform_candidates))
+            self.assertFalse(platform_candidates)
 
     def test_session_completion_can_be_toggled(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -779,7 +851,7 @@ class SeedSessionTests(unittest.TestCase):
             self.assertFalse(view["session"]["completed"])
             self.assertFalse(view["session"]["completed_at"])
 
-    def test_completion_review_unifies_learning_and_workflow_items(self) -> None:
+    def test_completion_review_only_returns_workflow_items(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             runner = CreativeRoomRunner(Path(tmp), llm=FakeLLM())
             state = runner.run_seed_session(
@@ -790,11 +862,11 @@ class SeedSessionTests(unittest.TestCase):
 
             review_items = runner.session_view(state.session_id)["review"]["items"]
             source_types = {item["source_type"] for item in review_items}
-            self.assertIn("memory", source_types)
             self.assertIn("assistant_workflow", source_types)
+            self.assertNotIn("memory", source_types)
             self.assertTrue(all(item["status"] == "pending" for item in review_items))
 
-    def test_review_accept_and_skip_use_unified_actions(self) -> None:
+    def test_review_accept_and_skip_use_workflow_actions(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             runner = CreativeRoomRunner(Path(tmp), llm=FakeLLM())
             state = runner.run_seed_session(
@@ -803,16 +875,12 @@ class SeedSessionTests(unittest.TestCase):
             )
             runner.complete_session(state.session_id, True)
             view = runner.session_view(state.session_id)
-            memory_item = next(item for item in view["review"]["items"] if item["source_type"] == "memory")
             workflow_item = next(item for item in view["review"]["items"] if item["source_type"] == "assistant_workflow")
 
-            accepted = runner.accept_review_item(state.session_id, memory_item["item_id"])
             blocked = runner.accept_review_item(state.session_id, workflow_item["item_id"])
 
-            self.assertEqual(accepted["status"], "accepted")
             self.assertEqual(blocked["status"], "blocked")
             updated = runner.session_view(state.session_id)["review"]["items"]
-            self.assertFalse(any(item["item_id"] == memory_item["item_id"] for item in updated))
             self.assertFalse(any(item["item_id"] == workflow_item["item_id"] for item in updated))
 
     def test_agent_events_and_skill_runs_are_recorded(self) -> None:
@@ -886,9 +954,15 @@ class SeedSessionTests(unittest.TestCase):
                 request="帮我写一段角色文案。",
                 user_preferences=["以后默认不要模板腔"],
             )
-            runner.complete_session(state.session_id, True)
-            candidate = next(item for item in runner.session_view(state.session_id)["learning"]["candidates"] if item["kind"] == "preference")
-            runner.apply_learning(str(candidate["candidate_id"]), "preference")
+            runner.memory.append(
+                MemoryRecord(
+                    layer="L3",
+                    content="偏好：以后默认不要模板腔",
+                    project_id="global",
+                    evidence_ids=[state.session_id],
+                    tags=["preference", "confirmed", "scope:global"],
+                )
+            )
 
             result = runner.delete_session(state.session_id, mode="revoke_memory")
 
@@ -896,7 +970,7 @@ class SeedSessionTests(unittest.TestCase):
             preferences = runner.preferences_view()["preferences"]
             self.assertTrue(any("不要模板腔" in str(item.get("display_content", "")) for item in preferences))
 
-    def test_reopen_completed_session_can_revoke_confirmed_learning(self) -> None:
+    def test_reopen_completed_session_does_not_revoke_absent_learning(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             runner = CreativeRoomRunner(Path(tmp), llm=FakeLLM())
             state = runner.run_seed_session(
@@ -904,17 +978,15 @@ class SeedSessionTests(unittest.TestCase):
                 user_preferences=["以后默认保持冷淡克制的角色语气"],
             )
             runner.complete_session(state.session_id, True)
-            candidate = next(item for item in runner.session_view(state.session_id)["learning"]["candidates"] if item["kind"] == "preference")
-            runner.apply_learning(str(candidate["candidate_id"]), "preference")
 
             result = runner.complete_session(state.session_id, False, revoke_learning_on_reopen=True)
 
-            self.assertGreaterEqual(result["revoked_learning_count"], 1)
-            self.assertGreaterEqual(result["revoked_confirmed_learning_count"], 1)
+            self.assertEqual(result["revoked_learning_count"], 0)
+            self.assertEqual(result["revoked_confirmed_learning_count"], 0)
             preferences = runner.preferences_view()["preferences"]
             self.assertFalse(any("冷淡克制" in str(item.get("display_content", "")) for item in preferences))
 
-    def test_completion_learning_candidates_are_compact(self) -> None:
+    def test_completion_learning_candidates_are_disabled(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             runner = CreativeRoomRunner(Path(tmp), llm=FakeLLM())
             state = runner.run_seed_session(
@@ -926,8 +998,7 @@ class SeedSessionTests(unittest.TestCase):
             runner.complete_session(state.session_id, True)
 
             candidates = runner.session_view(state.session_id)["learning"]["candidates"]
-            self.assertTrue(candidates)
-            self.assertTrue(all(len(str(item.get("content", ""))) <= 72 for item in candidates))
+            self.assertFalse(candidates)
 
     def test_atomic_storage_helpers_preserve_json_formats(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

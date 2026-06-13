@@ -39,6 +39,7 @@ class FeedbackSignal(str, Enum):
     ACCEPT = "accept"
     REJECT = "reject"
     EDIT = "edit"
+    CONTINUE = "continue"
     LIKE_STYLE = "like_style"
     DISLIKE_STYLE = "dislike_style"
     SAVE_AS_RULE = "save_as_rule"

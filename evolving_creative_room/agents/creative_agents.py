@@ -3,9 +3,15 @@ from __future__ import annotations
 import re
 
 from evolving_creative_room.agents.base import AgentResult
+from evolving_creative_room.context_isolation import filter_knowledge_for_session, filter_memory_for_session
 from evolving_creative_room.llm import ChatMessage, LLMClient, LLMError
 from evolving_creative_room.models import AgentRole, CreativeState
 from evolving_creative_room.naturalness import evaluate_naturalness
+
+
+CREATIVE_DRAFT_MAX_TOKENS = 5200
+CREATIVE_EDIT_MAX_TOKENS = 5200
+CREATIVE_CRITIQUE_MAX_TOKENS = 900
 
 
 class IntentInterpreter:
@@ -200,9 +206,19 @@ class ResearchAgent:
         query = " ".join([state.intent.raw_request, *state.intent.constraints, *state.intent.user_preferences])
         hits = []
         if self.memory:
-            hits.extend(f"memory:{item.get('content', '')}" for item in self.memory.search_records(query, limit=4, project_id=state.project_id))
+            memory_hits = filter_memory_for_session(
+                self.memory.search_records(query, limit=12, project_id=state.project_id),
+                state,
+                limit=4,
+            )
+            hits.extend(f"memory:{item.get('content', '')}" for item in memory_hits)
         if self.knowledge:
-            hits.extend(f"knowledge:{item.get('title', '')} - {item.get('content', '')}" for item in self.knowledge.search(query, limit=4, project_id=state.project_id))
+            knowledge_hits = filter_knowledge_for_session(
+                self.knowledge.search(query, limit=12, project_id=state.project_id),
+                state,
+                limit=4,
+            )
+            hits.extend(f"knowledge:{item.get('title', '')} - {item.get('content', '')}" for item in knowledge_hits)
         selected = []
         for hit in hits:
             if hit and hit not in state.facts:
@@ -432,7 +448,7 @@ def _try_llm_draft(llm: LLMClient, state: CreativeState) -> str | None:
                 "如果任务同时包含角色/世界观和平台传播，请自然融合两者。",
             ),
         ],
-        max_tokens=1200,
+        max_tokens=CREATIVE_DRAFT_MAX_TOKENS,
     )
 
 
@@ -448,7 +464,7 @@ def _try_llm_edit(llm: LLMClient, state: CreativeState, draft: str) -> str | Non
                 + draft,
             ),
         ],
-        max_tokens=1200,
+        max_tokens=CREATIVE_EDIT_MAX_TOKENS,
     )
 
 
@@ -464,7 +480,7 @@ def _try_llm_critique(llm: LLMClient, state: CreativeState, draft: str) -> list[
                 + draft,
             ),
         ],
-        max_tokens=700,
+        max_tokens=CREATIVE_CRITIQUE_MAX_TOKENS,
     )
     if not content:
         return None

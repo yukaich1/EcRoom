@@ -15,7 +15,7 @@ EcRoom 是一个面向泛内容创作的自进化 Multi-Agent 共创工作室。
 
 ## 产品演示
 
-[[▶️ 点击观看 EcRoom 产品演示](docs/images/QQ20260613-200707.mp4)](https://github.com/user-attachments/assets/6b457418-2031-41be-bb32-bec128b69e5b)
+https://github.com/user-attachments/assets/6b457418-2031-41be-bb32-bec128b69e5b
 
 ## 主要特性
 

@@ -15,7 +15,8 @@ EcRoom 是一个面向泛内容创作的人机共创工作室。用户用自然�
 
 ## 产品演示
 
-https://github.com/user-attachments/assets/6b457418-2031-41be-bb32-bec128b69e5b
+https://github.com/user-attachments/assets/966b014a-6479-4dc0-b9b6-5008407dee35
+
 
 ## 主要特性
 
